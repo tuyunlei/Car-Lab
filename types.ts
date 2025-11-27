@@ -16,10 +16,16 @@ export interface CarConfig {
   mass: number;
   wheelRadius: number;
   
+  // 动力学分布 (Advanced Dynamics)
+  frontWeightDistribution: number; // 前轴载荷分布 (0.0 - 1.0), e.g. 0.6 = 60% Front
+  momentOfInertia: number; // 车身转动惯量 (kg * m^2), resistance to rotation
+  tireStiffnessFront: number; // 前轮侧偏刚度 (Cornering Stiffness) N/rad
+  tireStiffnessRear: number; // 后轮侧偏刚度 N/rad
+  
   // 操控与阻力
   // maxSteerAngle: number; // DEPRECATED: 由 steeringRatio 和 maxSteeringWheelAngle 决定
-  drag: number; // 空气阻力
-  friction: number; // 轮胎侧向摩擦 (为漂移预留)
+  drag: number; // 空气阻力系数 (Cd * Area * 0.5 * rho)
+  friction: number; // 轮胎最大摩擦系数 (用于限制最大侧向力)
   brakingForce: number;
 
   // 转向系统 (Steering System)
@@ -57,11 +63,15 @@ export interface PhysicsState {
   
   // 动力系统状态
   rpm: number;
+  lastRpm: number; // 上一帧转速，用于计算微分 (D-term)
   gear: number; // 0: N, 1: 1st, -1: R
   clutchPosition: number; // 0 (结合) - 1 (分离)
   throttleInput: number; // 0 - 1 (平滑后)
   brakeInput: number; // 0 - 1 (平滑后)
   
+  // ECU 内部状态
+  idleEngineIntegral: number; // 怠速控制积分项 (Memory for PI Controller)
+
   engineOn: boolean;
   stalled: boolean; // 是否熄火
   speedKmh: number;

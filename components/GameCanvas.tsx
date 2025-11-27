@@ -22,12 +22,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig }
     heading: level.startHeading,
     angularVelocity: 0,
     steerAngle: 0,
-    steeringWheelAngle: 0, // NEW: Init steering wheel
+    steeringWheelAngle: 0, 
     rpm: 0,
+    lastRpm: 0, // NEW: Init
     gear: 0,
     clutchPosition: 0,
     throttleInput: 0,
     brakeInput: 0,
+    idleEngineIntegral: 0,
     engineOn: false,
     stalled: false,
     speedKmh: 0
@@ -63,6 +65,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig }
                 physicsStateRef.current.engineOn = true;
                 physicsStateRef.current.stalled = false;
                 physicsStateRef.current.rpm = 1000;
+                physicsStateRef.current.lastRpm = 1000;
+                physicsStateRef.current.idleEngineIntegral = 0; // Reset integral on start
                 setMessage("引擎启动");
                 setTimeout(() => setMessage(''), 2000);
             } else {
@@ -141,12 +145,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig }
         heading: level.startHeading,
         angularVelocity: 0,
         steerAngle: 0,
-        steeringWheelAngle: 0, // NEW: Reset
+        steeringWheelAngle: 0, 
         rpm: 0,
+        lastRpm: 0,
         gear: 0,
         clutchPosition: 0,
         throttleInput: 0,
         brakeInput: 0,
+        idleEngineIntegral: 0, // NEW: Reset
         engineOn: false,
         stalled: false,
         speedKmh: 0

@@ -9,28 +9,34 @@ export const CAR_PRESETS: Record<string, CarConfig> = {
     length: 4.5,
     wheelBase: 2.65,
     trackWidth: 1.55,
-    mass: 1250,
+    mass: 1300,
     wheelRadius: 0.3,
+
+    // 动力学：典型前驱家用车
+    // 头重脚轻 (60%前)，导致极限下容易推头 (Understeer)
+    frontWeightDistribution: 0.60, 
+    momentOfInertia: 2000, 
+    // 后轮刚度略高，增加行驶稳定性，防止甩尾
+    tireStiffnessFront: 60000,
+    tireStiffnessRear: 70000, 
     
-    // 转向：舒适取向，圈数多，转向比大
-    maxSteeringWheelAngle: 540, // 1.5圈 (左+右=3圈)
-    steeringRatio: 16.0, // 16:1 转向比
-    steeringSpeed: 400, // 手速一般
-    steeringReturnSpeed: 250, // 回正较柔和
+    // 转向：舒适取向
+    maxSteeringWheelAngle: 540, // 1.5圈
+    steeringRatio: 16.0, 
+    steeringSpeed: 400, 
+    steeringReturnSpeed: 250,
 
     // 动力：普通家用车
-    engineForce: 180, // Approx 180Nm peak torque
+    engineForce: 180, 
     brakingForce: 500,
     drag: 0.04,
-    friction: 1.2,
+    friction: 1.1, // 街道轮胎
     
-    // 转速特性：参考资料标准值
     idleRPM: 750,
     stallRPM: 450,
     redlineRPM: 6500,
     maxRPM: 6800,
     
-    // 瞬态：中规中矩
     flywheelInertia: 0.25, 
     engineFriction: 1.0, 
     engineBrakingCoefficient: 1.0,
@@ -39,35 +45,40 @@ export const CAR_PRESETS: Record<string, CarConfig> = {
     finalDriveRatio: 4.1,
   },
   SPORT: {
-    name: "Sport 2.0L Turbo Coupe",
+    name: "Sport 2.0L Turbo RWD",
     width: 1.9,
     length: 4.4,
     wheelBase: 2.55,
     trackWidth: 1.60,
-    mass: 1350,
+    mass: 1400,
     wheelRadius: 0.32,
     
-    // 转向：运动取向，圈数少，转向比小，手感快
-    maxSteeringWheelAngle: 360, // 1圈 (左+右=2圈)
-    steeringRatio: 12.0, // 12:1 转向比，很贼
-    steeringSpeed: 600, // 驾驶员操作更快
-    steeringReturnSpeed: 400, // 回正力矩大
+    // 动力学：50:50 配重，后驱
+    frontWeightDistribution: 0.51, 
+    momentOfInertia: 2400,
+    // 前后刚度接近，动态活跃，允许一定的转向过度 (Oversteer)
+    tireStiffnessFront: 80000,
+    tireStiffnessRear: 80000,
 
-    // 动力：响应快，高转速
-    engineForce: 350, // 350Nm
-    brakingForce: 700,
+    // 转向：运动取向
+    maxSteeringWheelAngle: 360, 
+    steeringRatio: 12.0, 
+    steeringSpeed: 600, 
+    steeringReturnSpeed: 400, 
+
+    engineForce: 380, 
+    brakingForce: 800,
     drag: 0.035,
-    friction: 1.4,
+    friction: 1.4, // 运动轮胎
 
     idleRPM: 850,
     stallRPM: 600,
     redlineRPM: 7200,
     maxRPM: 7500,
     
-    // 瞬态：轻量化飞轮，响应极快
     flywheelInertia: 0.15, 
     engineFriction: 1.2, 
-    engineBrakingCoefficient: 1.5, // 高压缩比
+    engineBrakingCoefficient: 1.5, 
 
     gearRatios: [0, 3.2, 2.0, 1.5, 1.1, 0.9],
     finalDriveRatio: 3.9,
@@ -81,27 +92,30 @@ export const CAR_PRESETS: Record<string, CarConfig> = {
     mass: 4500,
     wheelRadius: 0.45,
     
-    // 转向：非常慢，圈数极多
-    maxSteeringWheelAngle: 900, // 2.5圈
-    steeringRatio: 24.0, // 24:1
+    // 动力学：极其笨重
+    frontWeightDistribution: 0.4, // 假设空载，头重
+    momentOfInertia: 10000, 
+    tireStiffnessFront: 120000,
+    tireStiffnessRear: 150000,
+
+    maxSteeringWheelAngle: 900, 
+    steeringRatio: 24.0, 
     steeringSpeed: 300, 
     steeringReturnSpeed: 100,
 
-    // 动力：柴油机低扭强
     engineForce: 600, 
     brakingForce: 1200,
     drag: 0.08,
-    friction: 1.0,
+    friction: 0.9,
 
     idleRPM: 600,
     stallRPM: 400,
     redlineRPM: 3500,
     maxRPM: 4000,
     
-    // 瞬态：巨大的惯量
-    flywheelInertia: 1.2, // 转速升降很慢
+    flywheelInertia: 1.2, 
     engineFriction: 0.8, 
-    engineBrakingCoefficient: 2.5, // 柴油机发动机制动很强
+    engineBrakingCoefficient: 2.5, 
 
     gearRatios: [0, 5.0, 3.0, 2.0, 1.5, 1.0],
     finalDriveRatio: 5.0,
