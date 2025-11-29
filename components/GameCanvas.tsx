@@ -1,7 +1,9 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { PhysicsState, CarConfig, LevelData, StoppingState } from '../types';
-import { updatePhysics } from '../services/physicsEngine';
+import { PhysicsState, StoppingState } from '../physics/types';
+import { CarConfig } from '../config/types';
+import { LevelData } from '../game/types';
+import { updatePhysics } from '../physics/physicsEngine';
 import { renderService } from '../services/renderService';
 import { checkCollisions } from '../services/collisionService';
 import { Dashboard } from './Dashboard';

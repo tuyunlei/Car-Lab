@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { CarConfig } from '../types';
-import { CAR_PRESETS } from '../constants';
+import { CarConfig } from '../config/types';
+import { CAR_PRESETS } from '../config/cars';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface SandboxControlsProps {

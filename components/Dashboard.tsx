@@ -1,6 +1,7 @@
 
 import React, { useRef } from 'react';
-import { PhysicsState, CarConfig } from '../types';
+import { PhysicsState } from '../physics/types';
+import { CarConfig } from '../config/types';
 import { lerp } from '../utils/math';
 import { Gauge } from './dashboard/Gauge';
 import { TelemetryBar } from './dashboard/TelemetryBar';

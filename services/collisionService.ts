@@ -1,5 +1,6 @@
 
-import { MapObject, PhysicsState } from '../types';
+import { MapObject } from '../game/types';
+import { PhysicsState } from '../physics/types';
 
 export const checkCollisions = (car: PhysicsState, objects: MapObject[]): { collision: boolean, success: boolean } => {
     // Car radius in meters approx 2.0 (length/2)

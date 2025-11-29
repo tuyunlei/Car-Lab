@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { GameCanvas } from './components/GameCanvas';
 import { SandboxControls } from './components/SandboxControls';
 import { UnitTests } from './components/UnitTests';
-import { LevelData, GameMode, CarConfig } from './types';
-import { LEVELS, DEFAULT_CAR_CONFIG } from './constants';
+import { LevelData, GameMode } from './game/types';
+import { CarConfig } from './config/types';
+import { LEVELS } from './config/levels';
+import { DEFAULT_CAR_CONFIG } from './config/cars';
 import { useLanguage } from './contexts/LanguageContext';
 import { useTheme } from './contexts/ThemeContext';
 
@@ -52,7 +54,6 @@ const App: React.FC = () => {
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-200 relative transition-colors duration-300">
-        
         {/* Top Navigation Bar */}
         <div className="absolute top-0 left-0 right-0 h-16 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 z-20 shadow-sm dark:shadow-none transition-colors duration-300">
             <div className="flex items-center gap-4">

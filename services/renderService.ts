@@ -1,5 +1,7 @@
 
-import { PhysicsState, CarConfig, MapObject, Vector2 } from '../types';
+import { PhysicsState, Vector2 } from '../physics/types';
+import { CarConfig } from '../config/types';
+import { MapObject } from '../game/types';
 import { PX_PER_METER } from '../constants';
 
 export class RenderService {

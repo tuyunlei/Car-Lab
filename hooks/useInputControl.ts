@@ -1,7 +1,7 @@
 
 import { useEffect, useRef } from 'react';
 import { KEYS } from '../constants';
-import { InputState } from '../services/physics/inputSystem';
+import { InputState } from '../physics/types';
 
 export const useInputControl = () => {
     const inputsRef = useRef<InputState>({
