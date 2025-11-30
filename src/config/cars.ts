@@ -253,4 +253,4 @@ export const CAR_PRESETS: Record<string, CarConfig> = {
   }
 };
 
-export const DEFAULT_CAR_CONFIG: CarConfig = CAR_PRESETS.CIVILIAN;
+export const DEFAULT_CAR_CONFIG: CarConfig = CAR_PRESETS.C1_TRAINER;
