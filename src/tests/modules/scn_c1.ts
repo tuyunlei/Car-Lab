@@ -97,5 +97,58 @@ export const C1_SCENARIOS: TestDefinition[] = [
             ctx.assert(ctx.state.rpm < 300, 'RPM dropped to zero', { key: 'assert.c1.rpm_zero' });
             ctx.assert(!ctx.state.engineOn, 'Engine state is OFF', { key: 'assert.c1.engine_off' });
         }
+    },
+    {
+        id: 'SCN-C1-STALL-ROLL-01',
+        category: 'SCENARIO',
+        name: 'test.scn_c1_stall_roll.name',
+        description: 'test.scn_c1_stall_roll.desc',
+        steps: [
+            'test.scn_c1_stall_roll.s1',
+            'test.scn_c1_stall_roll.s2',
+            'test.scn_c1_stall_roll.s3',
+            'test.scn_c1_stall_roll.s4'
+        ],
+        run: (ctx: ScenarioContext) => {
+            // REGRESSION TEST: Ghost Force Fix
+            ctx.config = CAR_PRESETS.C1_TRAINER;
+
+            // 1. Setup: Moving in 1st gear, about to stall
+            ctx.state.engineOn = true;
+            ctx.state.rpm = 1000;
+            ctx.state.gear = 1;
+            ctx.state.localVelocity.x = 2.0;
+            ctx.state.clutchPosition = 0; // Engaged
+            ctx.state.isClutchLocked = true;
+
+            ctx.action('Braking to stall...', { key: 'action.brake_stall' });
+
+            // 2. Brake until stall
+            for(let i=0; i<120; i++) {
+                ctx.simulate(1, { brake: true });
+                if(ctx.state.stalled && ctx.state.localVelocity.x < 0.1) break;
+            }
+
+            ctx.assert(ctx.state.stalled, 'Car stalled', { key: 'assert.c1.stalled' });
+
+            // 3. Release Brake and Wait (The Regression Check)
+            // If the bug exists, the static friction (c0) will push the car backwards
+            ctx.action('Releasing brake, checking for ghost force...');
+            ctx.simulate(300, { brake: false, throttle: false, clutch: false }); // 5 seconds wait
+
+            // 4. Assertions
+            const v = ctx.state.localVelocity.x;
+            const rpm = ctx.state.rpm;
+
+            ctx.log(
+                `Final V: ${v.toFixed(3)}, RPM: ${rpm.toFixed(1)}`,
+                undefined,
+                { key: 'log.scn.velocity', params: { v: v.toFixed(3), rpm: rpm.toFixed(1) } }
+            );
+
+            // Should be basically 0. If ghost force exists, v will be negative (reversing).
+            ctx.assert(Math.abs(v) < 0.1, 'Car remains stationary after stall', { key: 'assert.scn.stationary' });
+            ctx.assert(Math.abs(rpm) < 10, 'Engine remains stopped', { key: 'assert.c1.rpm_zero' });
+        }
     }
 ];

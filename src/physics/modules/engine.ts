@@ -31,8 +31,17 @@ export const calculateEngineTorque = (
 
     const totalFriction = frictionMech + frictionPump;
 
+    // FIX: Handle Stalled/Off state specifically to prevent "Ghost Force"
     if (!engineOn || stalled) {
-        return -totalFriction; 
+        // If RPM is effectively zero, there should be no torque.
+        // Prevents the static friction term (c0) from acting as a constant reverse motor.
+        if (rpmAbs < 1.0) {
+            return 0;
+        }
+        // Friction always opposes rotation.
+        // If RPM > 0, returns -Friction (Braking)
+        // If RPM < 0, returns +Friction (Resisting reverse rotation)
+        return -Math.sign(rpm) * totalFriction; 
     }
 
     // 2. Combustion Torque

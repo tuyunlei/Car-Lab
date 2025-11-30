@@ -193,6 +193,13 @@ const translations: Record<Language, Record<string, string>> = {
     'test.scn_c1_stall.s2': '踩死刹车但不踩离合',
     'test.scn_c1_stall.s3': '验证引擎熄火 (Stall)',
 
+    'test.scn_c1_stall_roll.name': 'C1 专项：熄火后静止 (幽灵力回归测试)',
+    'test.scn_c1_stall_roll.desc': '验证熄火松开刹车后，车辆不会因错误的摩擦力模型而自动倒退。',
+    'test.scn_c1_stall_roll.s1': '1档行驶中踩死刹车至熄火',
+    'test.scn_c1_stall_roll.s2': '确认已熄火',
+    'test.scn_c1_stall_roll.s3': '松开刹车并等待',
+    'test.scn_c1_stall_roll.s4': '断言车辆保持静止',
+
     'action.creeping': '怠速蠕行中...',
     'log.c1.creep_speed': '蠕行速度: {v} m/s, RPM: {rpm}',
     'assert.c1.creep_speed': '车速在蠕行区间 (>0.5 m/s)',
@@ -431,6 +438,13 @@ const translations: Record<Language, Record<string, string>> = {
     'test.scn_c1_stall.s2': 'Slam brakes, no clutch',
     'test.scn_c1_stall.s3': 'Verify Engine Stall',
     
+    'test.scn_c1_stall_roll.name': 'C1 Special: Stall & Static (Ghost Force)',
+    'test.scn_c1_stall_roll.desc': 'Verify car remains stationary after stalling and releasing brakes (Regression Test).',
+    'test.scn_c1_stall_roll.s1': 'Stall car in 1st gear',
+    'test.scn_c1_stall_roll.s2': 'Confirm stall state',
+    'test.scn_c1_stall_roll.s3': 'Release brake & wait',
+    'test.scn_c1_stall_roll.s4': 'Assert car remains still',
+
     'action.creeping': 'Creeping...',
     'log.c1.creep_speed': 'Creep Speed: {v} m/s, RPM: {rpm}',
     'assert.c1.creep_speed': 'Speed is forward creep (>0.5 m/s)',
