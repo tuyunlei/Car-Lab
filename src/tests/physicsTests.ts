@@ -9,10 +9,14 @@ import { CHASSIS_TESTS } from './modules/unit_chassis';
 import { BASIC_SCENARIOS } from './modules/scn_basics';
 import { DYNAMIC_SCENARIOS } from './modules/scn_dynamics';
 import { C1_SCENARIOS } from './modules/scn_c1';
+import { EVALUATOR_TESTS } from './modules/unit_evaluator';
+import { RUNTIME_TESTS } from './modules/unit_lesson_runtime';
 
 const ALL_TESTS: TestDefinition[] = [
     ...POWERTRAIN_TESTS,
     ...CHASSIS_TESTS,
+    ...EVALUATOR_TESTS,
+    ...RUNTIME_TESTS, // Added Runtime Tests
     ...BASIC_SCENARIOS,
     ...DYNAMIC_SCENARIOS,
     ...C1_SCENARIOS

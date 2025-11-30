@@ -8,6 +8,7 @@ export const app = {
   'menu.title': '驾驶课程选择',
   'menu.desc': '选择一个训练项目开始练习，或进入沙盒模式自由驾驶。',
   'menu.close': '关闭 [ESC]',
+  'menu.locked': '课程未解锁 - 请先完成前置课程',
 
   'mode.sandbox.name': '自由沙盒模式',
   'mode.sandbox.desc': '调整物理参数，自由驾驶，测试车辆极限。',

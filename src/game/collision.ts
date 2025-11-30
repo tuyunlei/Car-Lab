@@ -2,11 +2,16 @@
 import { MapObject } from './types';
 import { PhysicsState } from '../physics/types';
 
-export const checkCollisions = (car: PhysicsState, objects: MapObject[]): { collision: boolean, success: boolean } => {
+export interface CollisionResult {
+    collision: boolean;
+    inTargetZone: boolean;
+}
+
+export const checkCollisions = (car: PhysicsState, objects: MapObject[]): CollisionResult => {
     // Car radius in meters approx 2.0 (length/2)
     const carRadius = 2.0; 
     let collision = false;
-    let success = false;
+    let inTargetZone = false;
 
     for (const obj of objects) {
         if (obj.type === 'wall') {
@@ -32,12 +37,13 @@ export const checkCollisions = (car: PhysicsState, objects: MapObject[]): { coll
             const dx = Math.abs(car.position.x - centerObjX);
             const dy = Math.abs(car.position.y - centerObjY);
             
-            // Tolerance in meters
-            if (dx < obj.width / 2 - 0.5 && dy < obj.height / 2 - 0.5 && Math.abs(car.speedKmh) < 0.5 && car.brakeInput > 0.9) {
-                success = true;
+            // Pure spatial check: Is the car roughly centered in the spot?
+            // We removed speed/brake checks here. Those belong in LessonRuntime conditions now.
+            if (dx < obj.width / 2 - 0.5 && dy < obj.height / 2 - 0.5) {
+                inTargetZone = true;
             }
         }
     }
 
-    return { collision, success };
+    return { collision, inTargetZone };
 };

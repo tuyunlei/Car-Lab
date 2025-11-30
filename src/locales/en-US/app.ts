@@ -8,6 +8,7 @@ export const app = {
   'menu.title': 'Course Selection',
   'menu.desc': 'Select a training module or enter Sandbox mode.',
   'menu.close': 'Close [ESC]',
+  'menu.locked': 'Locked - Complete previous lesson first',
 
   'mode.sandbox.name': 'Sandbox Mode',
   'mode.sandbox.desc': 'Tune physical parameters, drive freely, and test limits.',

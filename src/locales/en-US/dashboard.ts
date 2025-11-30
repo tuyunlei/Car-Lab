@@ -16,8 +16,7 @@ export const dashboard = {
   'msg.engine_off': 'Engine OFF',
   'msg.clutch_warn': 'Press Clutch to Shift!',
   'msg.reverse_block': 'Error! Cannot Shift to Reverse while moving!',
-  'msg.collision': 'Collision! Engine Stalled',
-  'msg.success': 'Task Complete! Perfect Stop',
+  
   'hud.physics': 'PHYSICS 3.0 STABLE',
   'hud.slope': 'SLOPE',
   'hud.flat': 'FLAT',

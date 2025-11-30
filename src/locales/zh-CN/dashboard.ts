@@ -16,8 +16,6 @@ export const dashboard = {
   'msg.engine_off': '引擎关闭',
   'msg.clutch_warn': '请踩下离合器换挡!',
   'msg.reverse_block': '错误! 车辆前进中禁止挂倒挡!',
-  'msg.collision': '碰撞! 引擎熄火',
-  'msg.success': '任务完成! 完美停车',
   
   'hud.physics': '物理内核 3.0 STABLE',
   'hud.slope': '坡度',

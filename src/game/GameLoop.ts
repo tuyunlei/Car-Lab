@@ -4,6 +4,9 @@ import { CarConfig } from '../config/types';
 import { LevelData } from './types';
 import { updatePhysics } from '../physics/physicsEngine';
 import { checkCollisions } from './collision';
+import { TelemetrySnapshot } from './telemetry';
+import { LessonRuntime, LessonRuntimeState } from './lessonRuntime';
+import { GameEvent } from './events';
 
 export interface GameLoopCallbacks {
     onTick: (state: PhysicsState) => void;
@@ -28,6 +31,13 @@ export class GameLoop {
     private lastTime: number = 0;
     private accumulator: number = 0;
     private readonly FIXED_DT = 0.016; // 60hz physics fixed step
+    
+    // Telemetry
+    private currentTelemetry: TelemetrySnapshot | null = null;
+    private sessionStartTime: number = 0;
+
+    // Lesson Runtime (Phase 4 Integration)
+    private currentLessonRuntime?: LessonRuntime;
 
     constructor(initialState: PhysicsState, deps: GameLoopDeps) {
         this.state = JSON.parse(JSON.stringify(initialState));
@@ -38,6 +48,7 @@ export class GameLoop {
         if (this.isRunning) return;
         this.isRunning = true;
         this.lastTime = performance.now();
+        this.sessionStartTime = this.lastTime;
         this.accumulator = 0;
         this.loop(this.lastTime);
     }
@@ -55,11 +66,35 @@ export class GameLoop {
         // Reset time accumulators to prevent huge jumps after reset
         this.accumulator = 0;
         this.lastTime = performance.now();
+        this.sessionStartTime = this.lastTime;
+        this.currentTelemetry = null;
     }
 
     public getState(): PhysicsState {
         return this.state;
     }
+
+    public getTelemetry(): TelemetrySnapshot | null {
+        return this.currentTelemetry;
+    }
+
+    // --- Lesson Runtime Integration ---
+
+    public attachLessonRuntime(runtime: LessonRuntime) {
+        this.currentLessonRuntime = runtime;
+        // Note: Caller is responsible for calling runtime.start() if needed,
+        // or we assume it's ready to go.
+    }
+
+    public detachLessonRuntime() {
+        this.currentLessonRuntime = undefined;
+    }
+
+    public getLessonRuntimeState(): LessonRuntimeState | undefined {
+        return this.currentLessonRuntime?.getState();
+    }
+
+    // ----------------------------------
 
     private loop = (timestamp: number) => {
         if (!this.isRunning) return;
@@ -102,17 +137,13 @@ export class GameLoop {
         const isC1 = config.drivetrainMode === 'C1_TRAINER';
 
         // 1. Handle Triggers (Discrete Events)
-        // Note: In a pure fixed step loop, triggers ideally should be consumed once per frame
-        // or queued. Here we process them in the physics step, which is acceptable.
         if (triggers.toggleEngine) {
             if (!this.state.engineOn) {
                 // START SEQUENCE
                 if (isC1) {
-                    // C1 Mode: Toggle Starter Motor (Latching button behavior)
                     this.state.starterActive = !this.state.starterActive;
-                    this.state.stalled = false; // Clear stall flag when attempting to crank
+                    this.state.stalled = false; 
                 } else {
-                    // Normal Mode: Instant Magic Start
                     this.state.engineOn = true;
                     this.state.stalled = false;
                     this.state.rpm = config.engine.idleRPM;
@@ -139,11 +170,11 @@ export class GameLoop {
             this.state.starterActive = false;
             this.state.stoppingState = StoppingState.MOVING;
             
-            // Re-engage handbrake on reset
             this.state.handbrakeInput = 1.0;
             this.state.handbrakePulled = true;
 
             this.deps.callbacks.onMessage('msg.reset');
+            this.sessionStartTime = performance.now();
         }
 
         if (triggers.shiftUp) {
@@ -162,7 +193,6 @@ export class GameLoop {
                 // REVERSE GEAR PROTECTION (C1 Mode)
                 if (isC1 && prevGear === -1) {
                     const fwdSpeed = this.state.localVelocity.x;
-                    // Block if moving forward faster than 2 m/s (~7 km/h)
                     if (fwdSpeed > 2.0) {
                         this.deps.callbacks.onMessage('msg.reverse_block');
                         return; // ABORT SHIFT
@@ -178,17 +208,45 @@ export class GameLoop {
         // 2. Physics Update
         this.state = updatePhysics(this.state, config, inputs, env, dt);
 
-        // 3. Collision Check
-        const { collision, success } = checkCollisions(this.state, level.objects);
+        // 3. Collision Check & Event Generation
+        // We only gather data here. No logic about "winning" or "losing" happens in GameLoop anymore.
+        const events: GameEvent[] = [];
+        const { collision, inTargetZone } = checkCollisions(this.state, level.objects);
+        
         if (collision) {
+            // Physics consequence of collision
             this.state.velocity = { x: -this.state.velocity.x * 0.5, y: -this.state.velocity.y * 0.5 };
             this.state.localVelocity = { x: 0, y: 0 };
             this.state.engineOn = false;
             this.state.stalled = true;
-            this.deps.callbacks.onMessage('msg.collision');
+            
+            // We just emit the event. LessonRuntime (if active) will decide if this fails the lesson.
+            events.push({ type: 'COLLISION', timestamp: performance.now() });
         }
-        if (success) {
-            this.deps.callbacks.onMessage('msg.success');
+        
+        // 4. Update Telemetry Snapshot
+        this.currentTelemetry = {
+            timestamp: performance.now(),
+            elapsedTime: performance.now() - this.sessionStartTime,
+            speedKmh: this.state.speedKmh,
+            engineRpm: this.state.rpm,
+            gear: this.state.gear,
+            throttleInput: this.state.throttleInput,
+            brakeInput: this.state.brakeInput,
+            clutchInput: this.state.clutchPosition,
+            handbrakeInput: this.state.handbrakeInput,
+            steeringAngle: this.state.steeringWheelAngle,
+            stalled: this.state.stalled,
+            engineOn: this.state.engineOn,
+            position: { ...this.state.position },
+            heading: this.state.heading,
+            isColliding: collision,
+            isInTargetZone: inTargetZone
+        };
+
+        // 5. Update Lesson Runtime (Sidecar Observer)
+        if (this.currentLessonRuntime) {
+            this.currentLessonRuntime.update(dt, this.currentTelemetry, events);
         }
     }
 }

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GameCanvas } from './components/GameCanvas';
 import { SandboxControls } from './components/SandboxControls';
 import { UnitTests } from './components/UnitTests';
@@ -11,27 +11,63 @@ import { DEFAULT_CAR_CONFIG } from '../config/cars';
 import { useLanguage } from './contexts/LanguageContext';
 import { useTheme } from './contexts/ThemeContext';
 import { ControlsProvider } from './contexts/ControlsContext';
+import { ALL_COURSES } from '../config/courses'; 
+import { LessonDefinition, CourseCategory } from '../game/lessonTypes';
+import { loadProgress, saveProgress, updateProgress, GameProgress, LessonStatus } from '../game/progress';
+
+// Extension to GameMode for strict typing within App
+type ExtendedGameMode = GameMode | 'LESSON';
 
 const AppContent: React.FC = () => {
   const [currentLevel, setCurrentLevel] = useState<LevelData>(LEVELS[0]);
-  const [gameMode, setGameMode] = useState<GameMode>(GameMode.LEVELS);
+  const [gameMode, setGameMode] = useState<ExtendedGameMode>(GameMode.LEVELS);
   const [carConfig, setCarConfig] = useState<CarConfig>(DEFAULT_CAR_CONFIG);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeLesson, setActiveLesson] = useState<LessonDefinition | undefined>(undefined);
+  
+  // Default to MENU open so we don't drop user into the first level immediately
+  const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [showTests, setShowTests] = useState(false);
   const [showControls, setShowControls] = useState(false);
   
+  // Progress State
+  const [progress, setProgress] = useState<GameProgress>(() => loadProgress());
+
   const { t, language, setLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
 
-  const handleLevelSelect = (level: LevelData) => {
-      setCurrentLevel(level);
-      setGameMode(GameMode.LEVELS);
+  const enterSandbox = () => {
+      setGameMode(GameMode.SANDBOX);
+      setActiveLesson(undefined);
       setIsMenuOpen(false);
   };
 
-  const enterSandbox = () => {
-      setGameMode(GameMode.SANDBOX);
-      setIsMenuOpen(false);
+  const startLesson = (lesson: LessonDefinition) => {
+      const status = progress[lesson.id]?.status || 'LOCKED';
+      if (status === 'LOCKED') return; // Prevent locked levels
+
+      const targetLevel = LEVELS.find(l => l.id === lesson.levelId);
+      if (targetLevel) {
+          setCurrentLevel(targetLevel);
+          setActiveLesson(lesson);
+          setGameMode('LESSON');
+          setIsMenuOpen(false);
+      } else {
+          console.error(`Level ${lesson.levelId} not found for lesson ${lesson.id}`);
+      }
+  };
+
+  const handleLessonFinish = (lessonId: string, result: 'success' | 'failed') => {
+      if (result === 'success') {
+          const newProgress = updateProgress(progress, lessonId, result);
+          setProgress(newProgress);
+          saveProgress(newProgress);
+      }
+  };
+
+  const exitLesson = () => {
+      setActiveLesson(undefined);
+      setGameMode(GameMode.LEVELS);
+      setIsMenuOpen(true);
   };
 
   const openTests = () => {
@@ -60,6 +96,12 @@ const AppContent: React.FC = () => {
       return <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>;
   };
 
+  const getLessonStatusIcon = (status: LessonStatus) => {
+      if (status === 'LOCKED') return <span className="text-slate-400">🔒</span>;
+      if (status === 'COMPLETED') return <span className="text-green-500 font-bold">✓</span>;
+      return null; 
+  };
+
   return (
     <div className="w-screen h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-200 relative transition-colors duration-300">
         {/* Top Navigation Bar */}
@@ -71,7 +113,9 @@ const AppContent: React.FC = () => {
                 </div>
                 <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
                 <div className="text-sm text-slate-500 dark:text-slate-400 font-mono">
-                    {gameMode === GameMode.SANDBOX ? t('app.mode.sandbox') : t(currentLevel.name)}
+                    {gameMode === GameMode.SANDBOX ? t('app.mode.sandbox') : 
+                     gameMode === 'LESSON' ? (activeLesson ? t(activeLesson.titleKey) : 'Lesson') :
+                     t(currentLevel.name)}
                 </div>
             </div>
 
@@ -104,7 +148,7 @@ const AppContent: React.FC = () => {
         {/* Level Selection Modal */}
         {isMenuOpen && (
             <div className="fixed inset-0 z-50 bg-slate-200/50 dark:bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-8">
-                <div className="max-w-4xl w-full bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl">
+                <div className="max-w-5xl w-full bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-y-auto max-h-[90vh]">
                     <div className="flex justify-between items-end mb-8 border-b border-slate-200 dark:border-slate-700 pb-4">
                         <div>
                             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{t('menu.title')}</h2>
@@ -115,28 +159,80 @@ const AppContent: React.FC = () => {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {/* Level Cards */}
-                        {LEVELS.map((lvl) => (
-                            <button 
-                                key={lvl.id}
-                                onClick={() => handleLevelSelect(lvl)}
-                                className={`group text-left p-6 rounded-xl border transition-all duration-200 relative overflow-hidden ${
-                                    currentLevel.id === lvl.id && gameMode === GameMode.LEVELS
-                                    ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/30' 
-                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-750 hover:border-blue-400 dark:hover:border-slate-500 hover:shadow-md'
-                                }`}
-                            >
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <svg className="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
-                                </div>
-                                <h3 className={`text-lg font-bold mb-2 z-10 relative ${currentLevel.id === lvl.id && gameMode === GameMode.LEVELS ? 'text-white' : 'text-slate-800 dark:text-slate-200'}`}>{t(lvl.name)}</h3>
-                                <p className={`text-sm z-10 relative ${currentLevel.id === lvl.id && gameMode === GameMode.LEVELS ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                                    {t(lvl.description)}
-                                </p>
-                            </button>
-                        ))}
+                    {/* Dynamic Course Sections */}
+                    {ALL_COURSES.map(course => {
+                        const isExamCategory = course.category === CourseCategory.SUBJECT_2_EXAM;
+                        const headerColor = isExamCategory ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400';
+                        const dotColor = isExamCategory ? 'bg-red-500' : 'bg-blue-500';
 
+                        return (
+                            <div key={course.id} className="mb-10 animate-fade-in">
+                                <h3 className={`text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2 ${headerColor}`}>
+                                    <span className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`}></span>
+                                    {t(course.titleKey)}
+                                    <span className="text-slate-400 font-normal normal-case ml-2">- {t(course.descriptionKey)}</span>
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {course.lessons.map((lesson) => {
+                                        const status = progress[lesson.id]?.status || 'LOCKED';
+                                        const isLocked = status === 'LOCKED';
+                                        
+                                        // Dynamic Styling for Exam Cards
+                                        const cardBaseClass = isExamCategory 
+                                            ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700'
+                                            : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900/40 hover:border-blue-300 dark:hover:border-blue-700';
+
+                                        const cardLockedClass = 'opacity-50 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-not-allowed grayscale';
+                                        
+                                        const ringClass = isExamCategory ? 'ring-red-500' : 'ring-blue-500';
+                                        const titleClass = isLocked ? 'text-slate-500' : (isExamCategory ? 'text-slate-800 dark:text-red-100' : 'text-slate-800 dark:text-blue-100');
+                                        const descClass = isLocked ? 'text-slate-400' : (isExamCategory ? 'text-slate-600 dark:text-red-200/70' : 'text-slate-600 dark:text-blue-200/70');
+                                        const tagClass = isExamCategory ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' : 'bg-white/50 dark:bg-black/20 text-blue-700 dark:text-blue-300';
+
+                                        return (
+                                            <button 
+                                                key={lesson.id}
+                                                onClick={() => startLesson(lesson)}
+                                                disabled={isLocked}
+                                                className={`
+                                                    text-left p-5 rounded-xl border transition-all group relative overflow-hidden flex flex-col h-full shadow-sm hover:shadow-md
+                                                    ${isLocked ? cardLockedClass : cardBaseClass}
+                                                    ${activeLesson?.id === lesson.id && gameMode === 'LESSON' ? `ring-2 ${ringClass}` : ''}
+                                                `}
+                                            >
+                                                <div className="flex-1 mb-2">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                         <h3 className={`text-base font-bold z-10 relative ${titleClass}`}>
+                                                            {t(lesson.titleKey)}
+                                                        </h3>
+                                                        <div className="z-10 relative">
+                                                            {getLessonStatusIcon(status)}
+                                                        </div>
+                                                    </div>
+                                                   
+                                                    <p className={`text-xs z-10 relative mt-1 line-clamp-3 ${descClass}`}>
+                                                        {isLocked ? t('menu.locked') : t(lesson.descriptionKey)}
+                                                    </p>
+                                                </div>
+                                                {!isLocked && (
+                                                    <div className={`mt-auto pt-2 border-t flex gap-1 flex-wrap ${isExamCategory ? 'border-red-200 dark:border-red-800/30' : 'border-blue-200 dark:border-blue-800/30'}`}>
+                                                        {lesson.skills.slice(0, 3).map(skill => (
+                                                            <span key={skill} className={`px-1.5 py-0.5 rounded text-[10px] font-bold opacity-70 ${tagClass}`}>
+                                                                {skill.replace('_', ' ')}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 border-t border-slate-200 dark:border-slate-800 pt-8">{t('menu.free_practice')}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                         {/* Sandbox Card */}
                         <button 
                              onClick={enterSandbox}
@@ -154,7 +250,9 @@ const AppContent: React.FC = () => {
                                 {t('mode.sandbox.desc')}
                             </p>
                         </button>
+                    </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Controls Settings Card */}
                          <button 
                              onClick={openControls}
@@ -223,8 +321,11 @@ const AppContent: React.FC = () => {
             <GameCanvas 
                 key={`${currentLevel.id}-${gameMode}-${language}`} 
                 level={currentLevel} 
-                mode={gameMode} 
+                mode={gameMode as any}
                 carConfig={carConfig}
+                activeLesson={activeLesson}
+                onExit={exitLesson}
+                onLessonFinish={handleLessonFinish}
             />
 
             {/* Sandbox Overlay */}
