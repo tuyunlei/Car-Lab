@@ -19,11 +19,28 @@ export const softSaturation = (value: number, n: number = 2): number => {
     return Math.sign(value) * sat;
 };
 
-// Low pass filter: y = y_prev + alpha * (x - y_prev)
-// alpha = dt / (tau + dt)
+// Low pass filter (Euler integration): y = y_prev + alpha * (x - y_prev)
 export const lowpass = (current: number, target: number, tau: number, dt: number): number => {
     const alpha = dt / (tau + dt);
     return current + (target - current) * alpha;
+};
+
+// Exponential Decay (Exact integration for constant target): Frame-rate independent smoothing
+// Replaces 'smoothInput' logic
+export const exponentialDecay = (current: number, target: number, tau: number, dt: number): number => {
+    if (tau <= 0.001) return target;
+    const alpha = 1.0 - Math.exp(-dt / tau);
+    return current + (target - current) * alpha;
+};
+
+// Limits a 2D vector's magnitude to maxLimit
+export const limitVector = (x: number, y: number, maxLimit: number): { x: number, y: number } => {
+    const currentMag = Math.hypot(x, y);
+    if (currentMag > maxLimit) {
+        const scale = maxLimit / currentMag;
+        return { x: x * scale, y: y * scale };
+    }
+    return { x, y };
 };
 
 // Linear interpolation for lookup table

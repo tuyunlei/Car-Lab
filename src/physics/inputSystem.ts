@@ -1,14 +1,7 @@
 
 import { ControlsConfig } from '../config/types';
 import { PhysicsState, InputState } from './types';
-import { interpolateTable, clamp } from '../utils/math';
-
-// Helper: First-order lag
-const smoothInput = (current: number, target: number, tau: number, dt: number): number => {
-    if (tau <= 0.001) return target;
-    const alpha = 1.0 - Math.exp(-dt / tau);
-    return current + (target - current) * alpha;
-};
+import { interpolateTable, clamp, exponentialDecay } from '../utils/math';
 
 export const processInputs = (
     currentState: PhysicsState,
@@ -27,7 +20,7 @@ export const processInputs = (
     } else {
         clutchTarget = inputs.clutch ? 1.0 : 0.0;
     }
-    newState.clutchPosition = smoothInput(newState.clutchPosition, clutchTarget, config.clutchTau, dt);
+    newState.clutchPosition = exponentialDecay(newState.clutchPosition, clutchTarget, config.clutchTau, dt);
 
     // 2. Throttle
     let throttleTarget = 0.0;
@@ -36,7 +29,7 @@ export const processInputs = (
     } else {
         throttleTarget = inputs.throttle ? 1.0 : 0.0;
     }
-    newState.throttleInput = smoothInput(newState.throttleInput, throttleTarget, config.throttleTau, dt);
+    newState.throttleInput = exponentialDecay(newState.throttleInput, throttleTarget, config.throttleTau, dt);
 
     // 3. Brake
     let brakeTarget = 0.0;
@@ -45,7 +38,7 @@ export const processInputs = (
     } else {
         brakeTarget = inputs.brake ? 1.0 : 0.0;
     }
-    newState.brakeInput = smoothInput(newState.brakeInput, brakeTarget, config.brakeTau, dt);
+    newState.brakeInput = exponentialDecay(newState.brakeInput, brakeTarget, config.brakeTau, dt);
 
     // 4. Handbrake
     let handbrakeTarget = 0.0;
@@ -55,7 +48,7 @@ export const processInputs = (
         handbrakeTarget = inputs.handbrake ? 1.0 : 0.0;
     }
     const handbrakeTau = config.handbrakeTau ?? config.brakeTau;
-    newState.handbrakeInput = smoothInput(newState.handbrakeInput, handbrakeTarget, handbrakeTau, dt);
+    newState.handbrakeInput = exponentialDecay(newState.handbrakeInput, handbrakeTarget, handbrakeTau, dt);
 
     // 5. Steering
     const absSpeed = Math.abs(currentSpeed);
@@ -75,7 +68,7 @@ export const processInputs = (
     const MAX_WHEEL_ANGLE = 540; 
     
     const targetAngle = steerTarget * MAX_WHEEL_ANGLE;
-    newState.steeringWheelAngle = smoothInput(newState.steeringWheelAngle, targetAngle, effectiveTau, dt);
+    newState.steeringWheelAngle = exponentialDecay(newState.steeringWheelAngle, targetAngle, effectiveTau, dt);
 
     return newState;
 };

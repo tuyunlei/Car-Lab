@@ -2,7 +2,7 @@
 import { ChassisConfig, FeelConfig } from '../config/types';
 import { PhysicsState, StoppingState } from './types';
 import { EnvironmentConfig } from '../game/types';
-import { smoothstep, clamp, softSaturation, lowpass } from '../utils/math';
+import { smoothstep, clamp, softSaturation, lowpass, limitVector } from '../utils/math';
 
 const GRAVITY = 9.81;
 
@@ -159,19 +159,9 @@ const computeTireForces = (
     const Fy_f_raw = -softSaturation(kappa_f, 2.0) * (mu * loads.Fz_f);
     const Fy_r_raw = -softSaturation(kappa_r, 2.0) * (mu * loads.Fz_r);
 
-    // Friction Circle
-    const applyFrictionCircle = (Fx: number, Fy: number, Fz: number) => {
-        const maxForce = Fz * mu;
-        const currentMag = Math.hypot(Fx, Fy);
-        if (currentMag > maxForce) {
-            const scale = maxForce / currentMag;
-            return { x: Fx * scale, y: Fy * scale };
-        }
-        return { x: Fx, y: Fy };
-    };
-
-    const front = applyFrictionCircle(Fx_drive_f + Fx_brake_f, Fy_f_raw, loads.Fz_f);
-    const rear = applyFrictionCircle(Fx_brake_r, Fy_r_raw, loads.Fz_r);
+    // Friction Circle: Limit magnitude to mu * Fz
+    const front = limitVector(Fx_drive_f + Fx_brake_f, Fy_f_raw, loads.Fz_f * mu);
+    const rear = limitVector(Fx_brake_r, Fy_r_raw, loads.Fz_r * mu);
 
     return { Fx_f: front.x, Fy_f: front.y, Fx_r: rear.x, Fy_r: rear.y };
 };

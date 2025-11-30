@@ -1,6 +1,5 @@
 
-import { PhysicsState, StoppingState } from './types';
-import { Vector2 } from './types';
+import { PhysicsState, StoppingState, Vector2 } from './types';
 
 export const createInitialState = (startPos: Vector2, startHeading: number): PhysicsState => {
     return {
