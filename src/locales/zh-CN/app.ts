@@ -1,6 +1,5 @@
-
 export const app = {
-  'app.title': 'ProDriver Lab',
+  'app.title': '别熄火！',
   'app.subtitle': '专业驾驶物理模拟器',
   'app.mode.sandbox': '自由沙盒模式',
   
