@@ -2,6 +2,7 @@
 import { TestDefinition } from '../types';
 import { ScenarioContext } from '../context';
 import { StoppingState } from '../../physics/types';
+import { simulateLaunchSequence } from '../helpers';
 
 export const BASIC_SCENARIOS: TestDefinition[] = [
     {
@@ -52,18 +53,12 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
             
             ctx.action('Launching...', { key: 'action.launching' });
             
-            // Simulate driver holding throttle and releasing clutch linearly
-            // Using analog input channel for clutch
-            const frames = 60;
-            for(let i=0; i<frames; i++) {
-                const clutchAnalog = 1.0 - (i / frames);
-                
-                // Simulate partial throttle + linear clutch release
-                ctx.simulate(1, { 
-                    throttleAnalog: 0.3, 
-                    clutchAnalog: clutchAnalog 
-                }); 
-            }
+            // Shared Launch Helper
+            // 30% Throttle, 60 frames release
+            simulateLaunchSequence(ctx, {
+                targetThrottle: 0.3,
+                clutchReleaseFrames: 60
+            });
             
             ctx.log(
                 `Final Speed: ${ctx.state.localVelocity.x.toFixed(2)} m/s, RPM: ${ctx.state.rpm.toFixed(0)}`,

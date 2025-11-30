@@ -121,21 +121,28 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
         run: (ctx: ScenarioContext) => {
             ctx.state.localVelocity.x = 2.0;
             
-            const targetSteerAngle = 0.5; 
-            const ratio = ctx.config.chassis.steeringRatio;
-            const targetWheelAngleDeg = targetSteerAngle * ratio * (180 / Math.PI);
+            const targetSteerAngle = 0.5; // Radians of road wheel
+            const steeringRatio = ctx.config.chassis.steeringRatio;
+            const targetWheelAngleDeg = targetSteerAngle * steeringRatio * (180 / Math.PI);
             
-            // Set wheel angle via input smoothing would take time, so for this specific kinematic test,
-            // setting the derived state `steeringWheelAngle` is acceptable as we are testing the Chassis response,
-            // not the Input smoothing.
+            // Calculate equivalent normalized input for the input system
+            const maxWheelAngle = ctx.config.chassis.maxSteeringWheelAngle;
+            const inputAnalog = Math.min(1.0, Math.max(-1.0, targetWheelAngleDeg / maxWheelAngle));
+
+            // Set state directly for the first frame to avoid waiting for smoothing
             ctx.state.steeringWheelAngle = targetWheelAngleDeg;
 
+            // Maintain input during simulation so InputSystem doesn't center the wheel
             for(let i=0; i<10; i++) {
-                ctx.simulate(1, {});
+                ctx.simulate(1, { steeringAnalog: inputAnalog });
             }
 
             const r = ctx.state.angularVelocity;
-            const r_kin = (2.0 / ctx.config.chassis.wheelBase) * Math.tan(targetSteerAngle);
+            
+            // Use current ACTUAL steer angle for validation (physics state), 
+            // instead of theoretical target, to isolate Kinematics logic from Input logic.
+            const actualSteerAngle = ctx.state.steerAngle; 
+            const r_kin = (2.0 / ctx.config.chassis.wheelBase) * Math.tan(actualSteerAngle);
             
             ctx.log(
                 `Actual Yaw: ${r.toFixed(3)}, Kinematic: ${r_kin.toFixed(3)}`,

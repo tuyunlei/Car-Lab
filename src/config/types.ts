@@ -6,6 +6,16 @@ export interface TorqueCurvePoint {
   torque: number;
 }
 
+export interface AssistConfig {
+  // If true, the clutch will automatically disengage when RPM drops too low to prevent stalling.
+  // Set to false for hardcore/simulation modes (like C1 training).
+  automaticClutchOnStall: boolean;
+  
+  // The ratio of Idle RPM at which the auto-clutch triggers.
+  // Default is 0.6 (e.g., if Idle is 800, triggers at 480).
+  automaticClutchRpmRatio?: number;
+}
+
 export interface EngineConfig {
   idleRPM: number;
   redlineRPM: number;
@@ -13,7 +23,17 @@ export interface EngineConfig {
   inertia: number;
   frictionCoef: { c0: number; c1: number; c2: number; kPump: number }; 
   torqueCurve: TorqueCurvePoint[]; 
-  idlePID: { kP: number; kI: number; kD: number; feedforward: number; };
+  idlePID: { 
+      kP: number; 
+      kI: number; 
+      kD: number; 
+      feedforward: number; 
+      // Gain Scheduling for Anti-Stall
+      maxThrottleIdle: number;       // Max throttle allowed during normal neutral idle
+      maxThrottleAntiStall: number;  // Max throttle allowed when fighting a stall
+      antiStallKpMultiplier: number; // Multiplier for kP when in anti-stall mode
+      antiStallRpmDropThreshold: number; // RPM drop from target to trigger anti-stall
+  };
 }
 
 export interface TransmissionConfig {
@@ -72,6 +92,7 @@ export interface CarConfig {
   name: string;
   width: number;
   length: number;
+  assists: AssistConfig;
   engine: EngineConfig;
   transmission: TransmissionConfig;
   brakes: BrakesConfig;

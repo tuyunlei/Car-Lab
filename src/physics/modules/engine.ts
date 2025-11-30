@@ -16,7 +16,7 @@ export const calculateEngineTorque = (
     rpm: number, 
     throttle: number, 
     engineOn: boolean, 
-    stalled: boolean,
+    stalled: boolean, 
     config: EngineConfig
 ): number => {
     // 1. Friction & Pumping Losses
@@ -53,11 +53,29 @@ export const calculateIdleThrottle = (
     currentRPM: number, 
     dt: number, 
     config: EngineConfig,
-    prevState: EngineState
+    prevState: EngineState,
+    context: { inGear: boolean; isClutchEngaged: boolean }
 ): { throttleOffset: number, newIntegral: number } => {
     const targetRPM = config.idleRPM;
     const error = targetRPM - currentRPM;
     
+    // Gain Scheduling: Determine Context
+    // We boost responsiveness if the engine is under load (In Gear + Clutch engaged) 
+    // AND the RPM has dropped significantly below target.
+    const isAntiStallNeeded = context.inGear && 
+                              context.isClutchEngaged && 
+                              (error > config.idlePID.antiStallRpmDropThreshold);
+
+    // Select parameters based on context
+    const activeKP = isAntiStallNeeded 
+        ? config.idlePID.kP * config.idlePID.antiStallKpMultiplier 
+        : config.idlePID.kP;
+
+    const maxThrottle = isAntiStallNeeded 
+        ? config.idlePID.maxThrottleAntiStall 
+        : config.idlePID.maxThrottleIdle;
+
+    // Integral calculation (Standard anti-windup)
     let newIntegral = prevState.integralError;
     if (Math.abs(error) < 1000) { 
         newIntegral += error * dt;
@@ -69,13 +87,14 @@ export const calculateIdleThrottle = (
 
     const derivative = (currentRPM - prevState.rpm) / dt;
 
+    // PID Output using scheduled gain
     const pidOut = 
-        error * config.idlePID.kP + 
+        error * activeKP + 
         newIntegral * config.idlePID.kI - 
         derivative * config.idlePID.kD; 
 
     return {
-        throttleOffset: clamp(config.idlePID.feedforward + pidOut, 0, 0.4), 
+        throttleOffset: clamp(config.idlePID.feedforward + pidOut, 0, maxThrottle), 
         newIntegral
     };
 };

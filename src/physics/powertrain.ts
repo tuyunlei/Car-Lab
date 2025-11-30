@@ -29,7 +29,18 @@ const computeEngineNetTorque = (
     let nextIdleIntegral = state.idleIntegral;
     
     if (state.engineOn && !state.stalled) {
-        const idleRes = calculateIdleThrottle(state.rpm, dt, config.engine, { rpm: state.lastRpm, integralError: state.idleIntegral });
+        // Clutch Position 0.0 = Fully Engaged, 1.0 = Disconnected
+        // We consider clutch "engaged enough" for stall logic if it's less than 0.9 (pedal not fully pressed)
+        const isClutchEngaged = state.clutchPosition < 0.9;
+        const inGear = state.gear !== 0;
+
+        const idleRes = calculateIdleThrottle(
+            state.rpm, 
+            dt, 
+            config.engine, 
+            { rpm: state.lastRpm, integralError: state.idleIntegral },
+            { inGear, isClutchEngaged }
+        );
         nextIdleIntegral = idleRes.newIntegral;
         finalThrottle = Math.max(state.throttleInput, idleRes.throttleOffset);
     }
@@ -58,8 +69,17 @@ const solveClutchState = (
         isLocked = false;
     } else if (isLocked) {
         const torqueOverload = Math.abs(engineTorque) > clutchCapacity * (1.0 + h);
-        const rpmTooLow = rpm < (idleRPM * 0.6);
-        if (torqueOverload || rpmTooLow) isLocked = false;
+        
+        let shouldAutoDisconnect = false;
+        // Check Assist Config
+        if (config.assists.automaticClutchOnStall) {
+            const ratio = config.assists.automaticClutchRpmRatio ?? 0.6;
+            if (rpm < idleRPM * ratio) {
+                shouldAutoDisconnect = true;
+            }
+        }
+
+        if (torqueOverload || shouldAutoDisconnect) isLocked = false;
     } else {
         const torqueOk = Math.abs(engineTorque) < clutchCapacity * (1.0 - h);
         const rpmDiffOk = Math.abs(rpmDiff) < 150; 
@@ -122,12 +142,20 @@ const integrateEngine = (
     inertia: number,
     dt: number
 ): number => {
+    let nextRPM = 0;
+    
     if (isLocked) {
-        return transmissionInputRPM;
+        nextRPM = transmissionInputRPM;
     } else {
         const alpha = netEngineTorque / inertia;
-        return Math.max(0, currentRPM + alpha * RAD_TO_RPM * dt);
+        nextRPM = currentRPM + alpha * RAD_TO_RPM * dt;
     }
+
+    // Physical Invariant: RPM cannot be negative.
+    // Negative RPM implies the engine is spinning backwards, which is impossible 
+    // for a standard 4-stroke engine in this context. 
+    // This guards against numerical instabilities or "impossible" locked states (e.g. rolling back in 1st gear)
+    return Math.max(0, nextRPM);
 };
 
 export const updatePowertrain = (
@@ -179,6 +207,9 @@ export const updatePowertrain = (
     // G. Stall Logic
     let nextStalled = state.stalled;
     let nextEngineOn = state.engineOn;
+    
+    // With Hardcore settings (no auto-clutch), isLocked remains true even at low RPM.
+    // If RPM drops below critical threshold while locked, we stall.
     if (state.engineOn && !state.stalled && nextRPM < 300 && isLocked) {
         nextStalled = true;
         nextEngineOn = false;

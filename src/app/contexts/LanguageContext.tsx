@@ -103,6 +103,10 @@ const translations: Record<Language, Record<string, string>> = {
     'test.unit_gear_01.s1': '获取2档齿轮比',
     'test.unit_gear_01.s2': '计算总传动比 (含终传比)',
     'test.unit_gear_01.s3': '验证RPM到轮速的换算因子',
+    
+    'test.unit_eng_stall_static.name': '熄火边界 (不变量测试)',
+    'test.unit_eng_stall_static.desc': '验证当物理状态不可能维持运转时 (1档+锁死+0车速)，引擎立即熄火。',
+    'test.unit_eng_stall_static.s1': '强制 0 车速 + 1 档 + 离合锁死',
 
     'test.unit_brake_01.name': '刹车偏置与扭矩',
     'test.unit_brake_01.desc': '确保刹车力度分配正确。',
@@ -175,6 +179,29 @@ const translations: Record<Language, Record<string, string>> = {
     'test.scn_coast_01.s2': '完全松开油门',
     'test.scn_coast_01.s3': '模拟 1 秒',
     'test.scn_coast_01.s4': '断言速度衰减，但不突兀',
+
+    // C1 Tests
+    'test.scn_c1_creep.name': 'C1 专项：1档怠速蠕行',
+    'test.scn_c1_creep.desc': '验证教练车在不踩油门时能靠怠速动力前行。',
+    'test.scn_c1_creep.s1': '挂入1档',
+    'test.scn_c1_creep.s2': '不踩油门，完全松开离合',
+    'test.scn_c1_creep.s3': '验证车速稳定在 5-8 km/h',
+
+    'test.scn_c1_stall.name': 'C1 专项：刹车憋熄火',
+    'test.scn_c1_stall.desc': '验证无自动离合辅助时，刹车致死会导致引擎熄火。',
+    'test.scn_c1_stall.s1': '车辆行驶中',
+    'test.scn_c1_stall.s2': '踩死刹车但不踩离合',
+    'test.scn_c1_stall.s3': '验证引擎熄火 (Stall)',
+
+    'action.creeping': '怠速蠕行中...',
+    'log.c1.creep_speed': '蠕行速度: {v} m/s, RPM: {rpm}',
+    'assert.c1.creep_speed': '车速在蠕行区间 (>0.5 m/s)',
+    'assert.c1.creep_rpm': '引擎带载维持怠速',
+    'action.brake_stall': '不踩离合急刹...',
+    'log.c1.stall_status': '最终 RPM: {rpm}, 熄火状态: {stalled}',
+    'assert.c1.stalled': '引擎预期熄火',
+    'assert.c1.rpm_zero': '转速归零',
+    'assert.c1.engine_off': '引擎状态 OFF',
     
     // Logs
     'log.powertrain.torque_measure': '扭矩测量 @ {rpm}RPM, {throttle}% 油门: {torque} Nm',
@@ -314,6 +341,10 @@ const translations: Record<Language, Record<string, string>> = {
     'test.unit_gear_01.s1': 'Get Gear Ratio for 2nd gear',
     'test.unit_gear_01.s2': 'Calculate Total Ratio (includes Final Drive)',
     'test.unit_gear_01.s3': 'Verify RPM to WheelSpeed conversion factor',
+    
+    'test.unit_eng_stall_static.name': 'Stall Boundary (Invariant)',
+    'test.unit_eng_stall_static.desc': 'Verify engine stalls instantly when physical state is impossible (1st gear + locked + 0 speed).',
+    'test.unit_eng_stall_static.s1': 'Force 0 Speed + 1st Gear + Locked Clutch',
 
     'test.unit_brake_01.name': 'Brake Bias & Torque',
     'test.unit_brake_01.desc': 'Ensure brake force distribution is correct.',
@@ -386,6 +417,29 @@ const translations: Record<Language, Record<string, string>> = {
     'test.scn_coast_01.s2': 'Release Throttle completely',
     'test.scn_coast_01.s3': 'Simulate 1 second',
     'test.scn_coast_01.s4': 'Assert Speed Decays, but not too abruptly',
+
+    // C1 Tests
+    'test.scn_c1_creep.name': 'C1 Special: Idle Creep',
+    'test.scn_c1_creep.desc': 'Verify trainer car creeps forward on idle power.',
+    'test.scn_c1_creep.s1': 'Shift to 1st Gear',
+    'test.scn_c1_creep.s2': 'Release clutch fully, 0 Throttle',
+    'test.scn_c1_creep.s3': 'Verify speed settles 5-8 km/h',
+
+    'test.scn_c1_stall.name': 'C1 Special: Brake Stall',
+    'test.scn_c1_stall.desc': 'Verify engine stalls when braked hard without clutch (Hardcore mode).',
+    'test.scn_c1_stall.s1': 'Car moving',
+    'test.scn_c1_stall.s2': 'Slam brakes, no clutch',
+    'test.scn_c1_stall.s3': 'Verify Engine Stall',
+    
+    'action.creeping': 'Creeping...',
+    'log.c1.creep_speed': 'Creep Speed: {v} m/s, RPM: {rpm}',
+    'assert.c1.creep_speed': 'Speed is forward creep (>0.5 m/s)',
+    'assert.c1.creep_rpm': 'Engine maintains idle load',
+    'action.brake_stall': 'Braking without clutch...',
+    'log.c1.stall_status': 'Final RPM: {rpm}, Stalled: {stalled}',
+    'assert.c1.stalled': 'Engine Stalled',
+    'assert.c1.rpm_zero': 'RPM dropped to zero',
+    'assert.c1.engine_off': 'Engine State OFF',
     
     // Logs
     'log.powertrain.torque_measure': 'Torque @ {rpm}RPM, {throttle}% Thr: {torque} Nm',

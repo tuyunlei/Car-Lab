@@ -8,12 +8,14 @@ import { POWERTRAIN_TESTS } from './modules/unit_powertrain';
 import { CHASSIS_TESTS } from './modules/unit_chassis';
 import { BASIC_SCENARIOS } from './modules/scn_basics';
 import { DYNAMIC_SCENARIOS } from './modules/scn_dynamics';
+import { C1_SCENARIOS } from './modules/scn_c1';
 
 const ALL_TESTS: TestDefinition[] = [
     ...POWERTRAIN_TESTS,
     ...CHASSIS_TESTS,
     ...BASIC_SCENARIOS,
-    ...DYNAMIC_SCENARIOS
+    ...DYNAMIC_SCENARIOS,
+    ...C1_SCENARIOS
 ];
 
 export type { TestResult, TestLogEntry } from './types';

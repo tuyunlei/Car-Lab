@@ -1,9 +1,11 @@
 
 import { TestDefinition } from '../types';
 import { UnitContext } from '../context';
-import { DEFAULT_CAR_CONFIG } from '../../config/cars';
+import { DEFAULT_CAR_CONFIG, CAR_PRESETS } from '../../config/cars';
 import { calculateEngineTorque } from '../../physics/modules/engine';
 import { getTotalRatio } from '../../physics/modules/transmission';
+import { updatePowertrain } from '../../physics/powertrain';
+import { createInitialState } from '../../physics/factory';
 
 export const POWERTRAIN_TESTS: TestDefinition[] = [
     {
@@ -59,6 +61,35 @@ export const POWERTRAIN_TESTS: TestDefinition[] = [
             
             ctx.assert(ratio > 0, 'Total ratio is positive', undefined, { key: 'assert.powertrain.ratio_pos' });
             ctx.assert(Math.abs(ratio - (config.gearRatios[2] * config.finalDriveRatio)) < 0.01, 'Ratio math correct', undefined, { key: 'assert.powertrain.ratio_math' });
+        }
+    },
+    {
+        id: 'UNIT-ENG-STALL-STATIC',
+        category: 'UNIT',
+        name: 'test.unit_eng_stall_static.name',
+        description: 'test.unit_eng_stall_static.desc',
+        steps: ['test.unit_eng_stall_static.s1'],
+        run: (ctx: UnitContext) => {
+            // Setup a "Physics Impossible" state that demands a stall
+            const config = CAR_PRESETS.C1_TRAINER;
+            const state = createInitialState({ x: 0, y: 0 }, 0);
+            
+            state.engineOn = true;
+            state.stalled = false;
+            state.gear = 1;
+            state.rpm = 800;
+            state.localVelocity.x = 0; // Stopped
+            state.clutchPosition = 0;  // Fully Engaged
+            state.isClutchLocked = true; // Forced Lock
+
+            // Run one tick
+            const result = updatePowertrain(state, config, 0.016);
+            
+            ctx.log(`Stalled: ${result.stalled}, EngineOn: ${result.engineOn}, NextRPM: ${result.rpm}`);
+            
+            ctx.assert(result.stalled === true, 'Impossible state (Stopped + Locked Clutch) triggers immediate stall');
+            ctx.assert(result.engineOn === false, 'Engine state turns off');
+            ctx.assert(result.rpm === 0, 'RPM is dragged to zero');
         }
     }
 ];
