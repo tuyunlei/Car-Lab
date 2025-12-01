@@ -1,6 +1,7 @@
 
-import React from 'react';
-import { describeArc, mapValueToAngle, polarToCartesian } from '../../../utils/math';
+import React, { useEffect, useRef } from 'react';
+import { describeArc, mapValueToAngle, polarToCartesian, lerp } from '../../../utils/math';
+import { PhysicsState } from '../../../physics/types';
 
 interface Zone {
     min: number;
@@ -11,7 +12,9 @@ interface Zone {
 }
 
 interface GaugeProps {
-    value: number;
+    value: number; // Fallback
+    valueAccessor?: (state: PhysicsState) => number; // High-freq accessor
+    latestStateRef?: React.MutableRefObject<PhysicsState>; // High-freq source
     min?: number;
     max: number;
     label: string;
@@ -25,6 +28,8 @@ interface GaugeProps {
 
 export const Gauge: React.FC<GaugeProps> = ({
     value,
+    valueAccessor,
+    latestStateRef,
     min = 0,
     max,
     label,
@@ -40,7 +45,49 @@ export const Gauge: React.FC<GaugeProps> = ({
     const RADIUS = 56;
     const START_ANGLE = -135;
     const END_ANGLE = 135;
-    const currentAngle = mapValueToAngle(value, min, max);
+    const TOTAL_ANGLE = 270;
+
+    // Direct DOM Refs for High Performance Updates
+    const needleRef = useRef<SVGGElement>(null);
+    const textRef = useRef<HTMLSpanElement>(null);
+    const currentValRef = useRef(value);
+
+    // Initial Angle for fallback
+    const initialAngle = mapValueToAngle(value, min, max);
+
+    useEffect(() => {
+        if (!latestStateRef || !valueAccessor || !needleRef.current) return;
+
+        let rafId: number;
+
+        const loop = () => {
+            const target = valueAccessor(latestStateRef.current);
+            // Smooth Interpolation
+            currentValRef.current = lerp(currentValRef.current, target, 0.2);
+
+            // 1. Rotate Needle
+            // Re-implement mapValueToAngle logic inline for speed or call utility
+            // mapValueToAngle = startAngle + ((val - min) / (max - min)) * totalAngle
+            const clamped = Math.min(max, Math.max(min, currentValRef.current));
+            const ratio = (clamped - min) / (max - min);
+            const angle = START_ANGLE + ratio * TOTAL_ANGLE;
+
+            if (needleRef.current) {
+                needleRef.current.setAttribute('transform', `rotate(${angle}, ${CX}, ${CY})`);
+            }
+
+            // 2. Update Text
+            if (textRef.current) {
+                textRef.current.textContent = Math.round(currentValRef.current).toString();
+            }
+
+            rafId = requestAnimationFrame(loop);
+        };
+
+        rafId = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(rafId);
+    }, [latestStateRef, valueAccessor, min, max]);
+
 
     const strokeColor = isDark ? "#e2e8f0" : "#334155";
     const subTickColor = isDark ? "#64748b" : "#94a3b8";
@@ -104,7 +151,11 @@ export const Gauge: React.FC<GaugeProps> = ({
                     return <path key={`zone-${i}`} d={describeArc(CX, CY, RADIUS, start, end)} fill="none" stroke={zone.color} strokeWidth={zone.width || 6} strokeOpacity={zone.opacity || 1} strokeLinecap="butt" />;
                 })}
                 <g>{ticks}</g>
-                <g transform={`rotate(${currentAngle}, ${CX}, ${CY})`}>
+                <g 
+                    ref={needleRef} 
+                    transform={`rotate(${initialAngle}, ${CX}, ${CY})`}
+                    className="will-change-transform"
+                >
                     <path d={`M${CX - 1},${CY} L${CX},${CY - RADIUS + 4} L${CX + 1},${CY}`} fill="black" opacity="0.3" filter="blur(2px)" transform="translate(1, 1)" />
                     <path d={`M${CX - 2},${CY + 8} L${CX},${CY - RADIUS + 2} L${CX + 2},${CY + 8}`} fill="url(#needle-gradient)" />
                     <circle cx={CX} cy={CY} r="3" fill="#cbd5e1" />
@@ -112,7 +163,7 @@ export const Gauge: React.FC<GaugeProps> = ({
                 </g>
             </svg>
             <div className="absolute top-[60%] flex flex-col items-center pointer-events-none">
-                <span className="text-2xl font-bold font-mono tracking-tighter drop-shadow-md" style={{ color: textColor }}>{Math.round(value)}</span>
+                <span ref={textRef} className="text-2xl font-bold font-mono tracking-tighter drop-shadow-md" style={{ color: textColor }}>{Math.round(value)}</span>
                 <div className="flex flex-col items-center -mt-1">
                     <span className="text-[10px] text-slate-500 font-bold uppercase">{label}</span>
                     <span className="text-[9px] text-slate-500 font-mono">{unit}</span>

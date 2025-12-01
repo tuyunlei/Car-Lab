@@ -28,9 +28,17 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig, 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gameLoopRef = useRef<GameLoop | null>(null);
   
-  // Throttle Control
+  // Throttle Control for React UI Updates
   const lastUiUpdateRef = useRef<number>(0);
   const UI_UPDATE_INTERVAL = 33; // ~30 FPS for React UI updates
+
+  // High-Frequency State Ref for smooth animations (RAF)
+  // This bypasses React's render cycle for things like needles and steering wheels
+  const latestStateRef = useRef<PhysicsState>(createInitialState(level.startPos, level.startHeading));
+
+  // FPS Counter Refs (Bypass React Render)
+  const fpsRef = useRef<HTMLDivElement>(null);
+  const fpsStatsRef = useRef({ frames: 0, lastTime: performance.now() });
 
   const { t } = useLanguage();
   const { isDark } = useTheme();
@@ -89,6 +97,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig, 
       const freshState = createInitialState(level.startPos, level.startHeading);
       gameLoopRef.current.reset(freshState);
       setDashboardState(freshState);
+      latestStateRef.current = freshState;
 
       // 2. Reset Runtime
       const runtime = createRuntime(activeLesson);
@@ -134,7 +143,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig, 
         },
         callbacks: {
             onTick: (newState) => {
-                // Rendering (Canvas)
+                // 1. Update the High-Frequency Ref immediately (Zero Overhead)
+                latestStateRef.current = newState;
+
+                // 2. Rendering (Canvas)
                 renderService.clear();
                 renderService.setupCamera(newState.position);
                 renderService.drawGrid(newState.position);
@@ -142,10 +154,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig, 
                 renderService.drawCar(newState, carConfig);
                 renderService.restoreCamera();
 
-                // UI Sync
+                // 3. FPS Calculation (Direct DOM update)
                 const now = performance.now();
+                fpsStatsRef.current.frames++;
+                if (now - fpsStatsRef.current.lastTime >= 500) {
+                    const fps = Math.round((fpsStatsRef.current.frames * 1000) / (now - fpsStatsRef.current.lastTime));
+                    if (fpsRef.current) {
+                        fpsRef.current.textContent = `FPS: ${fps}`;
+                    }
+                    fpsStatsRef.current.frames = 0;
+                    fpsStatsRef.current.lastTime = now;
+                }
+
+                // 4. UI Sync (Throttled for heavy React tree)
                 if (now - lastUiUpdateRef.current >= UI_UPDATE_INTERVAL) {
-                    setDashboardState({...newState});
+                    setDashboardState({...newState}); // Clone to trigger React diff
                     
                     // Sync Lesson State if active
                     if (gameLoopRef.current?.getLessonRuntimeState()) {
@@ -238,6 +261,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig, 
 
       {/* Physics Debug Info */}
       <div className="absolute top-4 right-4 text-right pointer-events-none opacity-50 z-0">
+          <div ref={fpsRef} className="font-mono text-sm font-bold text-green-600 dark:text-green-400 mb-1">FPS: --</div>
           <div className="text-xs text-slate-500">{t('hud.physics')}</div>
           <div className="font-mono text-xs text-slate-600 dark:text-slate-400">
               POS: {dashboardState.position.x.toFixed(2)}m, {dashboardState.position.y.toFixed(2)}m <br/>
@@ -259,7 +283,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ level, mode, carConfig, 
           />
       )}
 
-      <Dashboard state={dashboardState} config={carConfig} />
+      {/* Pass both the reactive state (for static UI) and the Ref (for high-fps UI) */}
+      <Dashboard 
+          state={dashboardState} 
+          latestStateRef={latestStateRef} 
+          config={carConfig} 
+      />
     </div>
   );
 };
