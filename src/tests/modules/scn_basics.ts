@@ -1,5 +1,4 @@
-
-import { TestDefinition } from '../types';
+import { TestDefinition, ITestContext } from '../types';
 import { ScenarioContext } from '../context';
 import { StoppingState } from '../../physics/types';
 import { simulateLaunchSequence } from '../helpers';
@@ -15,7 +14,8 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
             'test.scn_idle_01.s2',
             'test.scn_idle_01.s3'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             ctx.state.engineOn = true;
             ctx.state.rpm = 1000;
             ctx.state.lastRpm = 1000; 
@@ -29,8 +29,8 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
                 undefined,
                 { key: 'log.scn.final_rpm', params: { rpm: ctx.state.rpm.toFixed(0), target } }
             );
-            ctx.assert(Math.abs(ctx.state.rpm - target) < 50, 'RPM stabilized near idle target', { key: 'assert.scn.rpm_stable' });
-            ctx.assert(Math.abs(ctx.state.localVelocity.x) < 0.1, 'Car remains stationary', { key: 'assert.scn.stationary' });
+            ctx.assert(Math.abs(ctx.state.rpm - target) < 50, 'RPM stabilized near idle target', undefined, { key: 'assert.scn.rpm_stable' });
+            ctx.assert(Math.abs(ctx.state.localVelocity.x) < 0.1, 'Car remains stationary', undefined, { key: 'assert.scn.stationary' });
         }
     },
     {
@@ -44,7 +44,8 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
             'test.scn_start_flat_01.s3',
             'test.scn_start_flat_01.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             ctx.state.engineOn = true;
             ctx.state.rpm = 800;
             ctx.state.gear = 1;
@@ -65,9 +66,9 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
                 undefined,
                 { key: 'log.scn.final_speed', params: { v: ctx.state.localVelocity.x.toFixed(2), rpm: ctx.state.rpm.toFixed(0) } }
             );
-            ctx.assert(ctx.state.localVelocity.x > 1.0, 'Car is moving forward', { key: 'assert.scn.moving_fwd' });
-            ctx.assert(!ctx.state.stalled, 'Engine did not stall', { key: 'assert.scn.no_stall' });
-            ctx.assert(ctx.state.rpm > 600, 'RPM stayed healthy', { key: 'assert.scn.rpm_healthy' });
+            ctx.assert(ctx.state.localVelocity.x > 1.0, 'Car is moving forward', undefined, { key: 'assert.scn.moving_fwd' });
+            ctx.assert(!ctx.state.stalled, 'Engine did not stall', undefined, { key: 'assert.scn.no_stall' });
+            ctx.assert(ctx.state.rpm > 600, 'RPM stayed healthy', undefined, { key: 'assert.scn.rpm_healthy' });
         }
     },
     {
@@ -80,7 +81,8 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
             'test.scn_reverse_01.s2',
             'test.scn_reverse_01.s3'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             ctx.state.engineOn = true;
             ctx.state.rpm = 2000;
             ctx.state.gear = -1;
@@ -97,8 +99,8 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
                 undefined,
                 { key: 'log.scn.velocity', params: { v: ctx.state.localVelocity.x.toFixed(2), rpm: ctx.state.rpm.toFixed(0) } }
             );
-            ctx.assert(ctx.state.localVelocity.x < -0.5, 'Car moves backwards', { key: 'assert.scn.moving_back' });
-            ctx.assert(ctx.state.rpm > 800, 'Engine running', { key: 'assert.scn.engine_running' });
+            ctx.assert(ctx.state.localVelocity.x < -0.5, 'Car moves backwards', undefined, { key: 'assert.scn.moving_back' });
+            ctx.assert(ctx.state.rpm > 800, 'Engine running', undefined, { key: 'assert.scn.engine_running' });
         }
     },
     {
@@ -112,7 +114,8 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
             'test.scn_brake_stop_01.s3',
             'test.scn_brake_stop_01.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             ctx.state.localVelocity.x = 10;
             ctx.state.speedKmh = 36;
             ctx.state.stoppingState = StoppingState.MOVING;
@@ -129,8 +132,8 @@ export const BASIC_SCENARIOS: TestDefinition[] = [
                 }
             }
             
-            ctx.assert(stopped, 'Car entered STOPPED state', { key: 'assert.scn.stopped_state' });
-            ctx.assert(Math.abs(ctx.state.localVelocity.x) < 0.01, 'Velocity is effectively zero', { key: 'assert.scn.zero_vel' });
+            ctx.assert(stopped, 'Car entered STOPPED state', undefined, { key: 'assert.scn.stopped_state' });
+            ctx.assert(Math.abs(ctx.state.localVelocity.x) < 0.01, 'Velocity is effectively zero', undefined, { key: 'assert.scn.zero_vel' });
         }
     }
 ];

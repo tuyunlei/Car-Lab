@@ -1,5 +1,4 @@
-
-import { TestDefinition } from '../types';
+import { TestDefinition, ITestContext } from '../types';
 import { ScenarioContext } from '../context';
 import { CAR_PRESETS } from '../../config/cars';
 import { simulateLaunchSequence } from '../helpers';
@@ -15,7 +14,8 @@ export const C1_SCENARIOS: TestDefinition[] = [
             'test.scn_c1_creep.s2',
             'test.scn_c1_creep.s3'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             // Force C1 Config
             ctx.config = CAR_PRESETS.C1_TRAINER;
             
@@ -50,10 +50,10 @@ export const C1_SCENARIOS: TestDefinition[] = [
             );
 
             // Assert positive direction (forward) and reasonable creep speed
-            ctx.assert(v > 0.5, 'Car creeps forward (> 0.5 m/s)', { key: 'assert.c1.creep_speed' });
-            ctx.assert(v < 3.0, 'Car does not accelerate uncontrollably', { key: 'assert.scn.rpm_healthy' });
-            ctx.assert(rpm > 600, 'Engine maintains idle under load', { key: 'assert.c1.creep_rpm' });
-            ctx.assert(!ctx.state.stalled, 'Engine does not stall', { key: 'assert.scn.no_stall' });
+            ctx.assert(v > 0.5, 'Car creeps forward (> 0.5 m/s)', undefined, { key: 'assert.c1.creep_speed' });
+            ctx.assert(v < 3.0, 'Car does not accelerate uncontrollably', undefined, { key: 'assert.scn.rpm_healthy' });
+            ctx.assert(rpm > 600, 'Engine maintains idle under load', undefined, { key: 'assert.c1.creep_rpm' });
+            ctx.assert(!ctx.state.stalled, 'Engine does not stall', undefined, { key: 'assert.scn.no_stall' });
         }
     },
     {
@@ -66,7 +66,8 @@ export const C1_SCENARIOS: TestDefinition[] = [
             'test.scn_c1_stall.s2',
             'test.scn_c1_stall.s3'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             // Force C1 Config
             ctx.config = CAR_PRESETS.C1_TRAINER;
 
@@ -93,9 +94,9 @@ export const C1_SCENARIOS: TestDefinition[] = [
                 { key: 'log.c1.stall_status', params: { rpm: ctx.state.rpm.toFixed(0), stalled: ctx.state.stalled.toString() } }
             );
 
-            ctx.assert(ctx.state.stalled, 'Engine stalled as expected', { key: 'assert.c1.stalled' });
-            ctx.assert(ctx.state.rpm < 300, 'RPM dropped to zero', { key: 'assert.c1.rpm_zero' });
-            ctx.assert(!ctx.state.engineOn, 'Engine state is OFF', { key: 'assert.c1.engine_off' });
+            ctx.assert(ctx.state.stalled, 'Engine stalled as expected', undefined, { key: 'assert.c1.stalled' });
+            ctx.assert(ctx.state.rpm < 300, 'RPM dropped to zero', undefined, { key: 'assert.c1.rpm_zero' });
+            ctx.assert(!ctx.state.engineOn, 'Engine state is OFF', undefined, { key: 'assert.c1.engine_off' });
         }
     },
     {
@@ -109,7 +110,8 @@ export const C1_SCENARIOS: TestDefinition[] = [
             'test.scn_c1_stall_roll.s3',
             'test.scn_c1_stall_roll.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             // REGRESSION TEST: Ghost Force Fix
             ctx.config = CAR_PRESETS.C1_TRAINER;
 
@@ -129,7 +131,7 @@ export const C1_SCENARIOS: TestDefinition[] = [
                 if(ctx.state.stalled && ctx.state.localVelocity.x < 0.1) break;
             }
 
-            ctx.assert(ctx.state.stalled, 'Car stalled', { key: 'assert.c1.stalled' });
+            ctx.assert(ctx.state.stalled, 'Car stalled', undefined, { key: 'assert.c1.stalled' });
 
             // 3. Release Brake and Wait (The Regression Check)
             // If the bug exists, the static friction (c0) will push the car backwards
@@ -147,8 +149,8 @@ export const C1_SCENARIOS: TestDefinition[] = [
             );
 
             // Should be basically 0. If ghost force exists, v will be negative (reversing).
-            ctx.assert(Math.abs(v) < 0.1, 'Car remains stationary after stall', { key: 'assert.scn.stationary' });
-            ctx.assert(Math.abs(rpm) < 10, 'Engine remains stopped', { key: 'assert.c1.rpm_zero' });
+            ctx.assert(Math.abs(v) < 0.1, 'Car remains stationary after stall', undefined, { key: 'assert.scn.stationary' });
+            ctx.assert(Math.abs(rpm) < 10, 'Engine remains stopped', undefined, { key: 'assert.c1.rpm_zero' });
         }
     },
     {
@@ -161,7 +163,8 @@ export const C1_SCENARIOS: TestDefinition[] = [
             'test.scn_c1_start_success.s2',
             'test.scn_c1_start_success.s3'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+             const ctx = ctxRaw as ScenarioContext;
              // Force C1 Config
             ctx.config = CAR_PRESETS.C1_TRAINER;
             
@@ -189,7 +192,7 @@ export const C1_SCENARIOS: TestDefinition[] = [
 
             ctx.log(`Ignited at frame: ${ignitedFrame}, RPM: ${ctx.state.rpm.toFixed(0)}`);
 
-            ctx.assert(ctx.state.engineOn, 'Engine eventually starts', { key: 'assert.c1.engine_on' });
+            ctx.assert(ctx.state.engineOn, 'Engine eventually starts', undefined, { key: 'assert.c1.engine_on' });
             
             // 4. Stabilize
             ctx.state.starterActive = false; // Release key
@@ -197,7 +200,7 @@ export const C1_SCENARIOS: TestDefinition[] = [
 
             const target = ctx.config.engine.idleRPM;
             ctx.log(`Final RPM: ${ctx.state.rpm.toFixed(0)} (Target: ${target})`);
-            ctx.assert(Math.abs(ctx.state.rpm - target) < 100, 'RPM settles near idle', { key: 'assert.scn.rpm_stable' });
+            ctx.assert(Math.abs(ctx.state.rpm - target) < 100, 'RPM settles near idle', undefined, { key: 'assert.scn.rpm_stable' });
         }
     },
     {
@@ -211,7 +214,8 @@ export const C1_SCENARIOS: TestDefinition[] = [
             'test.scn_c1_start_fail.s3',
             'test.scn_c1_start_fail.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             // Requirement B: In-gear start fail
             ctx.config = CAR_PRESETS.C1_TRAINER;
             
@@ -244,9 +248,9 @@ export const C1_SCENARIOS: TestDefinition[] = [
 
             // Assertions
             const ignitionThreshold = ctx.config.engine.starter!.ignitionRPM;
-            ctx.assert(rpm < ignitionThreshold, 'RPM did not reach ignition threshold', { key: 'assert.c1.engine_off' });
-            ctx.assert(!ctx.state.engineOn, 'Engine did not start', { key: 'assert.c1.engine_off' });
-            ctx.assert(v > 0.05, 'Car moved slightly (Lurch)', { key: 'assert.scn.moving_fwd' });
+            ctx.assert(rpm < ignitionThreshold, 'RPM did not reach ignition threshold', undefined, { key: 'assert.c1.engine_off' });
+            ctx.assert(!ctx.state.engineOn, 'Engine did not start', undefined, { key: 'assert.c1.engine_off' });
+            ctx.assert(v > 0.05, 'Car moved slightly (Lurch)', undefined, { key: 'assert.scn.moving_fwd' });
         }
     },
     {
@@ -260,7 +264,8 @@ export const C1_SCENARIOS: TestDefinition[] = [
             'test.scn_c1_idle_upshift.s3',
             'test.scn_c1_idle_upshift.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             // Requirement A: High gear idle stall
             ctx.config = CAR_PRESETS.C1_TRAINER;
 
@@ -273,7 +278,7 @@ export const C1_SCENARIOS: TestDefinition[] = [
             ctx.state.throttleInput = 0;
 
             ctx.simulate(30, {});
-            ctx.assert(!ctx.state.stalled, '2nd gear idle is sustainable', { key: 'assert.scn.no_stall' });
+            ctx.assert(!ctx.state.stalled, '2nd gear idle is sustainable', undefined, { key: 'assert.scn.no_stall' });
 
             // 2. Shift to 3rd -> 4th
             ctx.action('Shifting up to 4th without throttle...');
@@ -294,7 +299,7 @@ export const C1_SCENARIOS: TestDefinition[] = [
                 { key: 'log.c1.stall_status', params: { rpm: ctx.state.rpm.toFixed(0), stalled: ctx.state.stalled.toString() } }
             );
 
-            ctx.assert(ctx.state.stalled, 'Engine stalled in high gear', { key: 'assert.c1.stalled' });
+            ctx.assert(ctx.state.stalled, 'Engine stalled in high gear', undefined, { key: 'assert.c1.stalled' });
         }
     },
     {
@@ -307,7 +312,8 @@ export const C1_SCENARIOS: TestDefinition[] = [
             'test.scn_c1_reverse_block.s2',
             'test.scn_c1_reverse_block.s3'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             // Requirement C: Reverse logic
             ctx.config = CAR_PRESETS.C1_TRAINER;
             
@@ -338,7 +344,7 @@ export const C1_SCENARIOS: TestDefinition[] = [
                 { key: 'log.c1.stall_status', params: { rpm: ctx.state.rpm.toFixed(0), stalled: ctx.state.stalled.toString() } }
             );
 
-            ctx.assert(ctx.state.stalled, 'Low speed reverse shock caused stall', { key: 'assert.c1.stalled' });
+            ctx.assert(ctx.state.stalled, 'Low speed reverse shock caused stall', undefined, { key: 'assert.c1.stalled' });
         }
     }
 ];

@@ -3,117 +3,101 @@ import React from 'react';
 import { PhysicsState } from '../../physics/types';
 import { CarConfig } from '../../config/types';
 import { Gauge } from './dashboard/Gauge';
-import { TelemetryBar } from './dashboard/TelemetryBar';
-import { HandbrakeLever } from './dashboard/HandbrakeLever';
 import { SteeringWheelDisplay } from './dashboard/SteeringWheelDisplay';
+import { HandbrakeLever } from './dashboard/HandbrakeLever';
+import { TelemetryBar } from './dashboard/TelemetryBar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { DASHBOARD_CONSTANTS } from '../constants';
 
 interface DashboardProps {
-  state: PhysicsState; // Throttled state for Low-Freq UI (Gear, Lights)
-  config: CarConfig;
+    state: PhysicsState;
+    config: CarConfig;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ state, config }) => {
-  const { t } = useLanguage();
-  const { isDark } = useTheme();
+    const { t } = useLanguage();
+    const { isDark } = useTheme();
 
-  const getGearLabel = (g: number) => {
-      if (g === 0) return 'N';
-      if (g === -1) return 'R';
-      return g.toString();
-  };
+    const maxRPM = Math.ceil(config.engine.maxRPM / DASHBOARD_CONSTANTS.RPM_GAUGE_ROUND_UNIT) * DASHBOARD_CONSTANTS.RPM_GAUGE_ROUND_UNIT;
+    
+    // RPM Zones configuration
+    const rpmZones = [
+        { min: 0, max: DASHBOARD_CONSTANTS.STALL_ZONE_MAX_RPM, color: '#ef4444', opacity: 0.3, width: 4 }, // Stall danger
+        { min: config.engine.idleRPM - 100, max: config.engine.idleRPM + 100, color: '#22c55e', opacity: 0.3, width: 4 }, // Idle target
+        { min: config.engine.redlineRPM, max: maxRPM, color: '#ef4444', opacity: 0.8, width: 8 } // Redline
+    ];
 
-  const redline = config.engine.redlineRPM;
-  const maxDisplayedRPM = Math.ceil((redline + 1000) / 1000) * 1000;
-  const stallZoneMax = 500; 
+    const isStalled = state.stalled;
+    const isEngineOn = state.engineOn;
 
-  const rpmZones = [
-      { min: 0, max: stallZoneMax, color: '#f97316', width: 6 },
-      { min: redline - 500, max: redline, color: '#eab308', width: 6 },
-      { min: redline, max: maxDisplayedRPM, color: '#ef4444', width: 6 }
-  ];
-
-  const isRedlining = state.rpm > redline;
-  const isNearRedline = state.rpm > redline - 500;
-
-  // Colors based on theme
-  const engineOnColor = state.engineOn ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : (isDark ? 'bg-slate-700' : 'bg-slate-300');
-  const stallColor = state.stalled ? 'bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]' : (isDark ? 'bg-slate-700' : 'bg-slate-300');
-  const gearBorder = isRedlining ? 'bg-red-900/40 border-red-500 animate-pulse' : (isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-300');
-  const gearTextDefault = isDark ? 'text-blue-100' : 'text-slate-800';
-
-  const handbrakeMode = config.controls.handbrakeMode;
-
-  return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-6 select-none perspective-[500px]">
-        {/* Main Cluster */}
-        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-700/60 rounded-3xl p-6 pb-8 flex items-end gap-8 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 transform-gpu transition-colors duration-300">
-            <Gauge 
-                value={state.rpm} // Fallback
-                valueAccessor={(s) => s.rpm}
-                max={maxDisplayedRPM} 
-                label={t('dash.rpm')} 
-                unit="x1000" 
-                zones={rpmZones} 
-                labelDivider={1000} 
-                majorTicksCount={maxDisplayedRPM / 1000} 
-                minorTicksPerMajor={4} 
-                isDark={isDark}
-            />
-
-            <div className="flex flex-col items-center justify-between h-40 pb-2">
-                <div className="flex gap-2 mb-2">
-                    <div className={`w-2 h-2 rounded-full ${engineOnColor}`} title={t('dash.engine_status')} />
-                    <div className={`w-2 h-2 rounded-full ${stallColor}`} title={t('dash.stall_warning')} />
-                </div>
-                {/* Gear display is fine at 30fps */}
-                <div className={`relative flex items-center justify-center w-28 h-28 rounded-2xl border-2 transition-colors duration-100 ${gearBorder} ${state.gear === 0 ? 'border-green-600/50' : ''}`}>
-                    <span className="absolute top-2 text-[10px] font-bold text-slate-500 tracking-widest">{t('dash.gear')}</span>
-                    <span className={`text-7xl font-black font-mono tracking-tighter z-10 ${state.gear === 0 ? 'text-green-500' : state.gear === -1 ? 'text-orange-500' : gearTextDefault} ${isNearRedline && state.gear > 0 ? 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'drop-shadow-lg'}`}>{getGearLabel(state.gear)}</span>
-                </div>
-            </div>
-
-            <Gauge 
-                value={state.speedKmh} 
-                valueAccessor={(s) => s.speedKmh}
-                max={220} 
-                label={t('dash.speed')} 
-                unit="km/h" 
-                majorTicksCount={11} 
-                minorTicksPerMajor={1} 
-                isDark={isDark}
-            />
-        </div>
-
-        {/* Input Telemetry */}
-        <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700/60 rounded-xl p-4 flex gap-4 shadow-xl h-fit transition-colors duration-300 items-end">
-            <SteeringWheelDisplay 
-                angle={state.steeringWheelAngle} 
-                isDark={isDark} 
-            />
+    return (
+        <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-center gap-8 pointer-events-none select-none bg-gradient-to-t from-slate-50/90 to-transparent dark:from-slate-900/90 transition-colors duration-300">
             
-            <div className="w-px bg-slate-300 dark:bg-slate-700 mx-1 h-32 self-center"></div>
-            
-            <div className="flex gap-2 items-end">
-                <TelemetryBar value={state.clutchPosition} color="bg-yellow-500" label={t('dash.clutch')} isDark={isDark} />
+            {/* Left Block: Pedal Inputs */}
+            <div className="flex gap-4 items-end pb-2">
+                <TelemetryBar value={state.clutchPosition} color="bg-blue-500" label={t('dash.clutch')} isDark={isDark} />
                 <TelemetryBar value={state.brakeInput} color="bg-red-500" label={t('dash.brake')} isDark={isDark} />
                 <TelemetryBar value={state.throttleInput} color="bg-green-500" label={t('dash.throttle')} isDark={isDark} />
             </div>
 
-            <div className="w-px bg-slate-300 dark:bg-slate-700 mx-1 h-20 self-end opacity-50"></div>
+            {/* Center Block: Main Gauges */}
+            <div className="flex gap-2 items-end relative">
+                {/* Status Indicators */}
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex gap-4">
+                    <div className={`flex items-center gap-1 px-3 py-1 rounded-full border transition-colors ${isEngineOn ? 'bg-green-500/20 border-green-500 text-green-600 dark:text-green-400' : 'bg-slate-500/20 border-slate-500 text-slate-500'}`}>
+                        <div className={`w-2 h-2 rounded-full ${isEngineOn ? 'bg-green-500 shadow-[0_0_5px_currentColor]' : 'bg-slate-500'}`} />
+                        <span className="text-[10px] font-bold uppercase">{t('dash.engine_status')}</span>
+                    </div>
+                    
+                    {isStalled && (
+                        <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50">
+                            <span className="text-xs font-bold uppercase">⚠️ {t('dash.stall_warning')}</span>
+                        </div>
+                    )}
+                </div>
 
-            <div className="flex items-end pl-1">
-                {handbrakeMode === 'RATCHET' ? (
-                    <HandbrakeLever 
-                        value={state.handbrakeInput} 
-                        isDark={isDark} 
-                    />
-                ) : (
-                    <TelemetryBar value={state.handbrakeInput} color="bg-orange-500" label={t('dash.handbrake')} isDark={isDark} />
-                )}
+                {/* RPM Gauge */}
+                <Gauge 
+                    value={state.rpm} 
+                    valueAccessor={(s) => s.rpm}
+                    max={maxRPM} 
+                    label={t('dash.rpm')} 
+                    unit="r/min" 
+                    zones={rpmZones}
+                    majorTicksCount={maxRPM / 1000}
+                    labelDivider={1000}
+                    isDark={isDark}
+                />
+                
+                {/* Digital Gear Display */}
+                <div className="flex flex-col items-center justify-end pb-8">
+                    <div className={`w-16 h-16 rounded-lg border-2 flex items-center justify-center mb-2 shadow-inner bg-slate-100 dark:bg-slate-800 transition-colors ${state.gear === 0 ? 'border-green-500/50' : 'border-slate-300 dark:border-slate-600'}`}>
+                        <span className={`text-3xl font-black font-mono ${state.gear === 0 ? 'text-green-600 dark:text-green-400' : (state.gear < 0 ? 'text-red-500' : 'text-slate-800 dark:text-white')}`}>
+                            {state.gear === 0 ? 'N' : (state.gear === -1 ? 'R' : state.gear)}
+                        </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500 font-bold">{t('dash.gear')}</span>
+                </div>
+
+                {/* Speedometer */}
+                <Gauge 
+                    value={state.speedKmh} 
+                    valueAccessor={(s) => s.speedKmh}
+                    max={200} 
+                    label={t('dash.speed')} 
+                    unit="km/h" 
+                    majorTicksCount={10}
+                    minorTicksPerMajor={1}
+                    isDark={isDark}
+                />
+            </div>
+
+            {/* Right Block: Steering & Handbrake */}
+            <div className="flex gap-6 items-end pb-2">
+                <SteeringWheelDisplay angle={state.steeringWheelAngle} isDark={isDark} />
+                <HandbrakeLever value={state.handbrakeInput} isDark={isDark} />
             </div>
         </div>
-    </div>
-  );
+    );
 };

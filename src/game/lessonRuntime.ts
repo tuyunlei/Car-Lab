@@ -9,8 +9,9 @@ import {
 import { TelemetrySnapshot } from './telemetry';
 import { GameEvent } from './events';
 import { evaluateCondition } from './conditionEvaluator';
+import { SCORING_CONSTANTS } from '../app/constants';
 
-export type LessonStatus = 'idle' | 'running' | 'success' | 'failed';
+export type LessonRuntimeStatus = 'idle' | 'running' | 'success' | 'failed';
 export type ObjectiveStatus = 'pending' | 'completed';
 
 export interface ObjectiveRuntimeState {
@@ -25,15 +26,22 @@ export interface HintRuntimeState {
     hasTriggered: boolean;
 }
 
+export interface FailureMetadata {
+    score?: number;
+    passingScore?: number;
+    elapsedMs?: number;
+    [key: string]: string | number | boolean | undefined;
+}
+
 export interface LessonRuntimeState {
-    status: LessonStatus;
+    status: LessonRuntimeStatus;
     elapsedMs: number;
     objectives: Map<string, ObjectiveRuntimeState>;
     result?: LessonResult; // 仅在 Success/Failed 后存在
     failureReason?: {
         code: string; 
         description?: string;
-        meta?: any;
+        meta?: FailureMetadata;
     };
     // 实时统计供 UI 显示
     stats: {
@@ -54,7 +62,7 @@ export class LessonRuntime {
     private lesson: LessonDefinition;
     private callbacks: LessonCallbacks;
     
-    private status: LessonStatus = 'idle';
+    private status: LessonRuntimeStatus = 'idle';
     private elapsedMs: number = 0;
     
     // Stats tracking
@@ -67,7 +75,7 @@ export class LessonRuntime {
     private hintStates: Map<string, HintRuntimeState> = new Map();
     
     private finalResult?: LessonResult;
-    private failureReason?: { code: string; description?: string; meta?: any };
+    private failureReason?: { code: string; description?: string; meta?: FailureMetadata };
 
     constructor(lesson: LessonDefinition, callbacks: LessonCallbacks) {
         this.lesson = lesson;
@@ -132,7 +140,7 @@ export class LessonRuntime {
         // Collision detection (Count events)
         const collisionsInFrame = events.filter(e => e.type === 'COLLISION').length;
         if (collisionsInFrame > 0) {
-            this.collisionCount += collisionsInFrame; // Or just increment by 1 per frame if preferred
+            this.collisionCount += collisionsInFrame; 
         }
 
         // 1. Check Failure Conditions (Priority High)
@@ -147,7 +155,8 @@ export class LessonRuntime {
         let requiredObjectivesDone = true;
 
         this.lesson.objectives.forEach(obj => {
-            const state = this.objectiveStates.get(obj.id)!;
+            const state = this.objectiveStates.get(obj.id);
+            if (!state) return;
             
             // Skip if already done
             if (state.status === 'completed') return;
@@ -177,7 +186,8 @@ export class LessonRuntime {
         // 3. Check Hints
         if (this.lesson.hints) {
             this.lesson.hints.forEach(hint => {
-                const hState = this.hintStates.get(hint.id)!;
+                const hState = this.hintStates.get(hint.id);
+                if (!hState) return;
                 
                 // If 'once' is true and already triggered, skip
                 if (hint.once && hState.hasTriggered) return;
@@ -249,10 +259,10 @@ export class LessonRuntime {
 
         // Grade Calculation
         let grade: 'S' | 'A' | 'B' | 'C' | 'D' = 'C';
-        if (score >= 95) grade = 'S';
-        else if (score >= 85) grade = 'A';
-        else if (score >= 70) grade = 'B';
-        else if (score >= 60) grade = 'C';
+        if (score >= SCORING_CONSTANTS.GRADE_S_THRESHOLD) grade = 'S';
+        else if (score >= SCORING_CONSTANTS.GRADE_A_THRESHOLD) grade = 'A';
+        else if (score >= SCORING_CONSTANTS.GRADE_B_THRESHOLD) grade = 'B';
+        else if (score >= SCORING_CONSTANTS.GRADE_C_THRESHOLD) grade = 'C';
         else grade = 'D';
 
         return {
@@ -266,7 +276,7 @@ export class LessonRuntime {
         };
     }
 
-    private failLesson(code: string, meta?: any) {
+    private failLesson(code: string, meta?: FailureMetadata) {
         this.status = 'failed';
         this.failureReason = { code, meta };
         

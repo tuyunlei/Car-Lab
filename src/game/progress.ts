@@ -1,10 +1,10 @@
 
 import { ALL_COURSES } from '../config/courses';
 
-export type LessonStatus = 'LOCKED' | 'AVAILABLE' | 'COMPLETED';
+export type LessonUnlockStatus = 'LOCKED' | 'AVAILABLE' | 'COMPLETED';
 
 export interface LessonProgress {
-    status: LessonStatus;
+    status: LessonUnlockStatus;
     highScore?: number;
 }
 

@@ -1,22 +1,21 @@
-
 import { CarConfig } from '../config/types';
-import { PhysicsState } from '../physics/types';
+import { PhysicsState, InputState } from '../physics/types';
 import { EnvironmentConfig } from '../game/types';
-import { TestLogEntry } from './types';
+import { TestLogEntry, LogData, LocalizationParams, ITestContext } from './types';
 import { updatePhysics } from '../physics/physicsEngine';
 import { createInitialState } from '../physics/factory';
 
-export class UnitContext {
+export class UnitContext implements ITestContext {
     public logs: TestLogEntry[] = [];
     public testId: string;
     
     constructor(testId: string) { this.testId = testId; }
     
-    log(message: string, data?: Record<string, any>, l10n?: { key: string; params?: any }) { 
+    log(message: string, data?: LogData, l10n?: LocalizationParams) { 
         this.logs.push({ frame: 0, type: 'info', message, data, l10n }); 
     }
     
-    assert(condition: boolean, message: string, data?: Record<string, any>, l10n?: { key: string; params?: any }) {
+    assert(condition: boolean, message: string, data?: LogData, l10n?: LocalizationParams) {
         if (condition) {
             this.logs.push({ frame: 0, type: 'pass', message: `PASS: ${message}`, data, l10n });
         } else { 
@@ -26,7 +25,7 @@ export class UnitContext {
     }
 }
 
-export class ScenarioContext {
+export class ScenarioContext implements ITestContext {
   public logs: TestLogEntry[] = [];
   public state: PhysicsState;
   public config: CarConfig;
@@ -49,11 +48,11 @@ export class ScenarioContext {
     this.state.handbrakePulled = false;
   }
 
-  log(message: string, data?: Record<string, any>, l10n?: { key: string; params?: any }) {
+  log(message: string, data?: LogData, l10n?: LocalizationParams) {
     this.logs.push({ frame: this.frame, type: 'info', message, data, l10n });
   }
 
-  action(message: string, l10n?: { key: string; params?: any }) {
+  action(message: string, l10n?: LocalizationParams) {
       this.logs.push({ frame: this.frame, type: 'action', message, l10n });
   }
 
@@ -69,18 +68,22 @@ export class ScenarioContext {
       };
   }
 
-  simulate(frames: number, inputs: any) {
+  simulate(frames: number, inputs: Partial<InputState>) {
     for (let i = 0; i < frames; i++) {
-      this.state = updatePhysics(this.state, this.config, inputs, this.environment, 0.016);
+      // Cast inputs to InputState, assuming undefineds are handled by engine or spread
+      const safeInputs = inputs as InputState;
+      this.state = updatePhysics(this.state, this.config, safeInputs, this.environment, 0.016);
       this.frame++;
     }
   }
 
-  assert(condition: boolean, message: string, l10n?: { key: string; params?: any }) {
+  assert(condition: boolean, message: string, data?: LogData, l10n?: LocalizationParams) {
+    // If data is not provided, fallback to snapshot
+    const logData = data || this.snapshot;
     if (condition) {
-      this.logs.push({ frame: this.frame, type: 'pass', message: `PASS: ${message}`, data: this.snapshot, l10n });
+      this.logs.push({ frame: this.frame, type: 'pass', message: `PASS: ${message}`, data: logData, l10n });
     } else {
-      this.logs.push({ frame: this.frame, type: 'fail', message: `FAIL: ${message}`, data: this.snapshot, l10n });
+      this.logs.push({ frame: this.frame, type: 'fail', message: `FAIL: ${message}`, data: logData, l10n });
       throw new Error(message);
     }
   }

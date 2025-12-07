@@ -1,5 +1,4 @@
-
-import { TestDefinition } from '../types';
+import { TestDefinition, ITestContext } from '../types';
 import { ScenarioContext } from '../context';
 
 export const DYNAMIC_SCENARIOS: TestDefinition[] = [
@@ -14,7 +13,8 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
             'test.scn_hill_start_01.s3',
             'test.scn_hill_start_01.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             ctx.environment.slope = 0.15;
             ctx.state.engineOn = true;
             ctx.state.rpm = 800;
@@ -29,7 +29,7 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
             // Maintain hold via inputs
             ctx.simulate(30, { brake: true, clutch: true });
             
-            ctx.assert(Math.abs(ctx.state.localVelocity.x) < 0.01, 'Brakes hold car on slope', { key: 'assert.dyn.brake_hold' });
+            ctx.assert(Math.abs(ctx.state.localVelocity.x) < 0.01, 'Brakes hold car on slope', undefined, { key: 'assert.dyn.brake_hold' });
             
             ctx.action("Releasing brakes (Neutral)", { key: 'action.release_brake' });
             // Release brake input
@@ -42,7 +42,7 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
                 undefined,
                 { key: 'log.dyn.rollback', params: { v: ctx.state.localVelocity.x.toFixed(2) } }
             );
-            ctx.assert(ctx.state.localVelocity.x < -0.1, 'Gravity causes rollback', { key: 'assert.dyn.rollback' });
+            ctx.assert(ctx.state.localVelocity.x < -0.1, 'Gravity causes rollback', undefined, { key: 'assert.dyn.rollback' });
             
             ctx.action("Launching", { key: 'action.launching' });
             
@@ -60,7 +60,7 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
                 undefined,
                 { key: 'log.dyn.climb', params: { v: ctx.state.localVelocity.x.toFixed(2) } }
             );
-            ctx.assert(ctx.state.localVelocity.x > 0.5, 'Car climbs slope', { key: 'assert.dyn.climb' });
+            ctx.assert(ctx.state.localVelocity.x > 0.5, 'Car climbs slope', undefined, { key: 'assert.dyn.climb' });
         }
     },
     {
@@ -74,7 +74,8 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
             'test.scn_shift_01.s3',
             'test.scn_shift_01.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             ctx.state.engineOn = true;
             ctx.state.rpm = 4000;
             ctx.state.gear = 1;
@@ -104,7 +105,7 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
                 undefined,
                 { key: 'log.dyn.jerk', params: { j: maxJerk.toFixed(1) } }
             );
-            ctx.assert(maxJerk < 150, 'Shift shock constrained by effective mass smoothing', { key: 'assert.dyn.shock' });
+            ctx.assert(maxJerk < 150, 'Shift shock constrained by effective mass smoothing', undefined, { key: 'assert.dyn.shock' });
         }
     },
     {
@@ -118,7 +119,8 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
             'test.scn_low_blend_01.s3',
             'test.scn_low_blend_01.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             ctx.state.localVelocity.x = 2.0;
             
             const targetSteerAngle = 0.5; // Radians of road wheel
@@ -149,7 +151,7 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
                 undefined,
                 { key: 'log.dyn.yaw', params: { r: r.toFixed(3), k: r_kin.toFixed(3) } }
             );
-            ctx.assert(Math.abs(r - r_kin) < 0.1, 'Matches kinematic model at low speed', { key: 'assert.dyn.kinematic' });
+            ctx.assert(Math.abs(r - r_kin) < 0.1, 'Matches kinematic model at low speed', undefined, { key: 'assert.dyn.kinematic' });
         }
     },
     {
@@ -163,7 +165,8 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
             'test.scn_coast_01.s3',
             'test.scn_coast_01.s4'
         ],
-        run: (ctx: ScenarioContext) => {
+        run: (ctxRaw: ITestContext) => {
+            const ctx = ctxRaw as ScenarioContext;
             ctx.state.engineOn = true;
             ctx.state.gear = 4;
             ctx.state.isClutchLocked = true;
@@ -183,9 +186,9 @@ export const DYNAMIC_SCENARIOS: TestDefinition[] = [
                 { key: 'log.dyn.coast', params: { v1: startV.toFixed(2), v2: endV.toFixed(2), d: deceleration.toFixed(2) } }
             );
             
-            ctx.assert(endV < startV, 'Car decelerates', { key: 'assert.dyn.decel' });
-            ctx.assert(deceleration > 0.5, 'Deceleration is perceptible (>0.5 m/s^2)', { key: 'assert.dyn.decel_perceptible' });
-            ctx.assert(deceleration < 3.0, 'Deceleration is not violent (<3.0 m/s^2)', { key: 'assert.dyn.decel_gentle' });
+            ctx.assert(endV < startV, 'Car decelerates', undefined, { key: 'assert.dyn.decel' });
+            ctx.assert(deceleration > 0.5, 'Deceleration is perceptible (>0.5 m/s^2)', undefined, { key: 'assert.dyn.decel_perceptible' });
+            ctx.assert(deceleration < 3.0, 'Deceleration is not violent (<3.0 m/s^2)', undefined, { key: 'assert.dyn.decel_gentle' });
         }
     }
 ];

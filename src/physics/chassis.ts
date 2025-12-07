@@ -2,8 +2,7 @@
 import { ChassisConfig, FeelConfig } from '../config/types';
 import { PhysicsState, StoppingState, EnvironmentConfig } from './types';
 import { smoothstep, clamp, softSaturation, lowpass, limitVector } from '../utils/math';
-
-const GRAVITY = 9.81;
+import { PHYSICS_CONSTANTS, STOPPING_CONSTANTS, TIRE_CONSTANTS } from './constants';
 
 export interface ChassisForces {
     driveForce: number;      
@@ -32,16 +31,16 @@ const computeLoadDistribution = (
     slope: number, 
     config: ChassisConfig
 ): LoadDistribution => {
-    const weight = mass * GRAVITY * Math.cos(slope);
+    const weight = mass * PHYSICS_CONSTANTS.GRAVITY * Math.cos(slope);
     const staticFzFront = (config.cgToRear / config.wheelBase) * weight;
     const staticFzRear = (config.cgToFront / config.wheelBase) * weight;
     
     const dynamicLoad = (ax * mass * config.cgHeight) / config.wheelBase;
     
     return {
-        Fz_f: clamp(staticFzFront - dynamicLoad, 100, weight),
-        Fz_r: clamp(staticFzRear + dynamicLoad, 100, weight),
-        weightLong: -mass * GRAVITY * Math.sin(slope)
+        Fz_f: clamp(staticFzFront - dynamicLoad, PHYSICS_CONSTANTS.MIN_AXLE_LOAD, weight),
+        Fz_r: clamp(staticFzRear + dynamicLoad, PHYSICS_CONSTANTS.MIN_AXLE_LOAD, weight),
+        weightLong: -mass * PHYSICS_CONSTANTS.GRAVITY * Math.sin(slope)
     };
 };
 
@@ -57,7 +56,7 @@ const updateStoppingState = (
     dt: number
 ): { stoppingState: StoppingState; stopTimer: number } => {
     const absVx = Math.abs(velocity);
-    const isBraking = totalBrakeTorque > 10;
+    const isBraking = totalBrakeTorque > STOPPING_CONSTANTS.MIN_BRAKE_TORQUE_THRESHOLD;
     
     // Condition to hold the car still
     // Brake Force Limit > Propulsion (Gravity + Engine)
@@ -132,7 +131,7 @@ const computeTireForces = (
     const vy = localVelocity.y;
     const r = angularVelocity;
 
-    const vx_safe = Math.abs(vx) < 0.5 ? 0.5 : Math.abs(vx);
+    const vx_safe = Math.abs(vx) < TIRE_CONSTANTS.LOW_SPEED_SAFE_VALUE ? TIRE_CONSTANTS.LOW_SPEED_SAFE_VALUE : Math.abs(vx);
     
     const vy_f = vy + config.cgToFront * r;
     const vy_r = vy - config.cgToRear * r;
@@ -143,7 +142,7 @@ const computeTireForces = (
     // Brake Scaling during stop phase to smooth transition
     let brakeScale = 1.0;
     if (stoppingState === StoppingState.STOPPING) {
-        brakeScale = Math.min(1.0, Math.abs(vx) * 5);
+        brakeScale = Math.min(1.0, Math.abs(vx) * TIRE_CONSTANTS.STOPPING_BRAKE_SCALE_FACTOR);
     }
 
     const Fx_brake_f = -Math.sign(vx) * inputs.brakeTorqueFront / config.wheelRadius * brakeScale;
@@ -183,7 +182,7 @@ const integrateMotion = (
     const cosS = Math.cos(steerAngle);
 
     const F_aero = -config.dragCoefficient * vx * Math.abs(vx);
-    const F_roll = -config.rollingResistance * config.mass * GRAVITY * Math.sign(vx);
+    const F_roll = -config.rollingResistance * config.mass * PHYSICS_CONSTANTS.GRAVITY * Math.sign(vx);
 
     const Fx_total = forces.Fx_f * cosS + forces.Fx_r - forces.Fy_f * sinS + F_aero + F_roll + loads.weightLong;
     const Fy_total = forces.Fy_f * cosS + forces.Fy_r + forces.Fx_f * sinS;

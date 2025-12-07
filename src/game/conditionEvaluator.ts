@@ -1,3 +1,4 @@
+
 import { 
     ConditionDefinition, 
     AtomicCondition, 
@@ -8,7 +9,8 @@ import {
 import { TelemetrySnapshot } from './telemetry';
 import { GameEvent } from './events';
 
-type OpStrategy = (actual: any, cond: AtomicCondition) => boolean;
+type ConditionValue = number | string | boolean;
+type OpStrategy = (actual: ConditionValue | undefined, cond: AtomicCondition) => boolean;
 
 const STRATEGIES: Record<ComparisonOperator, OpStrategy> = {
     'EQ': (val, cond) => val === cond.value,
@@ -45,7 +47,7 @@ const evaluateAtomic = (
     events: GameEvent[]
 ): boolean => {
     // 1. 获取被比较的值 (Subject)
-    let actualValue: number | boolean | undefined;
+    let actualValue: ConditionValue | undefined;
 
     if (cond.field in telemetry) {
         actualValue = telemetry[cond.field as TelemetryField];

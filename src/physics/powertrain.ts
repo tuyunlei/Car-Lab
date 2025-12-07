@@ -5,6 +5,7 @@ import { calculateEngineTorque, calculateIdleThrottle } from './modules/engine';
 import { calculateBrakeTorques } from './modules/brakes';
 import { getTotalRatio, calculateEffectiveInertiaRatio } from './modules/transmission';
 import { RAD_TO_RPM, lerp } from '../utils/math';
+import { CLUTCH_CONSTANTS, ENGINE_CONSTANTS } from './constants';
 
 export interface PowertrainOutput {
     rpm: number; 
@@ -31,7 +32,7 @@ const computeEngineNetTorque = (
     
     if (state.engineOn && !state.stalled) {
         // Clutch Position 0.0 = Fully Engaged, 1.0 = Disconnected
-        const isClutchEngaged = state.clutchPosition < 0.9;
+        const isClutchEngaged = state.clutchPosition < CLUTCH_CONSTANTS.ENGAGEMENT_THRESHOLD;
         const inGear = state.gear !== 0;
 
         const idleRes = calculateIdleThrottle(
@@ -61,6 +62,44 @@ const computeEngineNetTorque = (
     return { netTorque, throttleUsed: finalThrottle, nextIdleIntegral };
 };
 
+const shouldForceUnlock = (gear: number, clutchCapacity: number): boolean => {
+    return gear === 0 || clutchCapacity < CLUTCH_CONSTANTS.MIN_CAPACITY;
+};
+
+const shouldAutoDisconnect = (
+    config: CarConfig,
+    rpm: number,
+    idleRPM: number
+): boolean => {
+    if (!config.assists.automaticClutchOnStall) return false;
+    const ratio = config.assists.automaticClutchRpmRatio ?? 0.6;
+    return rpm < idleRPM * ratio;
+};
+
+const shouldUnlockDueToOverload = (
+    engineTorque: number,
+    clutchCapacity: number,
+    hysteresis: number
+): boolean => {
+    return Math.abs(engineTorque) > clutchCapacity * (1.0 + hysteresis);
+};
+
+const canLockClutch = (
+    engineTorque: number,
+    clutchCapacity: number,
+    rpmDiff: number,
+    rpm: number,
+    idleRPM: number,
+    isC1: boolean,
+    hysteresis: number
+): boolean => {
+    const torqueOk = Math.abs(engineTorque) < clutchCapacity * (1.0 - hysteresis);
+    const rpmDiffOk = Math.abs(rpmDiff) < CLUTCH_CONSTANTS.LOCK_RPM_DIFF_THRESHOLD;
+    const rpmHealthy = rpm > idleRPM * 0.9;
+    const canLock = isC1 ? true : rpmHealthy;
+    return torqueOk && rpmDiffOk && canLock;
+};
+
 // 2. Solve Clutch & Transmission State
 const solveClutchState = (
     state: PhysicsState,
@@ -76,33 +115,18 @@ const solveClutchState = (
     let isLocked = state.isClutchLocked;
     const h = config.transmission.clutchHysteresis;
     const idleRPM = config.engine.idleRPM;
+    const isC1 = config.drivetrainMode === 'C1_TRAINER';
 
-    if (gear === 0 || clutchCapacity < 5.0) {
+    if (shouldForceUnlock(gear, clutchCapacity)) {
         isLocked = false;
     } else if (isLocked) {
-        const torqueOverload = Math.abs(engineTorque) > clutchCapacity * (1.0 + h);
-        
-        let shouldAutoDisconnect = false;
-        // Check Assist Config
-        if (config.assists.automaticClutchOnStall) {
-            const ratio = config.assists.automaticClutchRpmRatio ?? 0.6;
-            if (rpm < idleRPM * ratio) {
-                shouldAutoDisconnect = true;
-            }
-        }
-
-        if (torqueOverload || shouldAutoDisconnect) isLocked = false;
+        const overload = shouldUnlockDueToOverload(engineTorque, clutchCapacity, h);
+        const autoDisconnect = shouldAutoDisconnect(config, rpm, idleRPM);
+        if (overload || autoDisconnect) isLocked = false;
     } else {
-        const torqueOk = Math.abs(engineTorque) < clutchCapacity * (1.0 - h);
-        const rpmDiffOk = Math.abs(rpmDiff) < 150; 
-        
-        // Logic: Only allow locking if RPM is healthy, OR if we are being dragged by the starter/wheels
-        // For C1 Hardcore, we allow locking even at low RPM to simulate stall conditions
-        const isC1 = config.drivetrainMode === 'C1_TRAINER';
-        const rpmHealthy = rpm > (idleRPM * 0.9);
-        const canLock = isC1 ? true : rpmHealthy;
-
-        if (torqueOk && rpmDiffOk && canLock) isLocked = true;
+        if (canLockClutch(engineTorque, clutchCapacity, rpmDiff, rpm, idleRPM, isC1, h)) {
+            isLocked = true;
+        }
     }
 
     // Calculate Transmitted Torque based on state
@@ -220,7 +244,7 @@ export const updatePowertrain = (
     
     // 1. Ignition Check
     if (nextStarterActive && !nextEngineOn) {
-        const ignitionThreshold = config.engine.starter?.ignitionRPM || 300;
+        const ignitionThreshold = config.engine.starter?.ignitionRPM || ENGINE_CONSTANTS.STALL_RPM_THRESHOLD;
         if (nextRPM > ignitionThreshold) {
             nextEngineOn = true;
             nextStarterActive = false; // Disengage starter
@@ -231,15 +255,15 @@ export const updatePowertrain = (
     // 2. Standard Stall Logic
     // With Hardcore settings, isLocked remains true even at low RPM.
     // If RPM drops below critical threshold while locked, we stall.
-    if (nextEngineOn && !nextStalled && nextRPM < 300 && isLocked) {
+    if (nextEngineOn && !nextStalled && nextRPM < ENGINE_CONSTANTS.STALL_RPM_THRESHOLD && isLocked) {
         nextStalled = true;
         nextEngineOn = false;
     }
 
     // 3. C1 Special: High Gear Idle Stall Logic
     // If in high gear (>=3), low throttle, and RPM dropping, force stall earlier to prevent infinite cruise
-    if (isC1 && nextEngineOn && Math.abs(gear) >= 3 && state.throttleInput < 0.05 && isLocked) {
-        const idleThreshold = config.engine.idleRPM * 0.8;
+    if (isC1 && nextEngineOn && Math.abs(gear) >= ENGINE_CONSTANTS.HIGH_GEAR_THRESHOLD && state.throttleInput < 0.05 && isLocked) {
+        const idleThreshold = config.engine.idleRPM * ENGINE_CONSTANTS.HIGH_GEAR_IDLE_STALL_RATIO;
         if (nextRPM < idleThreshold) {
             nextStalled = true;
             nextEngineOn = false;
@@ -251,7 +275,7 @@ export const updatePowertrain = (
     if (isC1 && nextEngineOn && isLocked) {
         const speedDir = Math.sign(localVelocity.x);
         const gearDir = Math.sign(gear); // -1 for Reverse
-        if (gearDir !== 0 && speedDir !== 0 && gearDir !== speedDir && Math.abs(localVelocity.x) > 0.5) {
+        if (gearDir !== 0 && speedDir !== 0 && gearDir !== speedDir && Math.abs(localVelocity.x) > ENGINE_CONSTANTS.REVERSE_SHOCK_MIN_SPEED) {
              // Severe shock -> immediate stall
              nextStalled = true;
              nextEngineOn = false;

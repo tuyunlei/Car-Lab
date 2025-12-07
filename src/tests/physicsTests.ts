@@ -1,5 +1,5 @@
 
-import { TestResult, TestDefinition } from './types';
+import { TestResult, TestDefinition, TestLogEntry, ITestContext } from './types';
 import { UnitContext, ScenarioContext } from './context';
 import { DEFAULT_CAR_CONFIG } from '../config/cars';
 
@@ -26,7 +26,7 @@ export type { TestResult, TestLogEntry } from './types';
 
 export const runTestSafe = (test: TestDefinition): TestResult => {
     const start = performance.now();
-    let logs: any[] = [];
+    let logs: TestLogEntry[] = [];
     let passed = false;
     let error = undefined;
     let errorL10n = undefined;
@@ -36,25 +36,26 @@ export const runTestSafe = (test: TestDefinition): TestResult => {
         if (test.category === 'SCENARIO') {
             const ctx = new ScenarioContext(DEFAULT_CAR_CONFIG, test.id);
             try {
-                test.run(ctx);
+                // Cast to ITestContext to satisfy the interface check
+                test.run(ctx as unknown as ITestContext);
                 passed = true;
-            } catch (e: any) {
-                error = e.message;
+            } catch (e: unknown) {
+                error = e instanceof Error ? e.message : String(e);
             }
             logs = ctx.logs;
             snapshot = ctx.snapshot;
         } else {
             const ctx = new UnitContext(test.id);
             try {
-                test.run(ctx);
+                test.run(ctx as unknown as ITestContext);
                 passed = true;
-            } catch (e: any) {
-                error = e.message;
+            } catch (e: unknown) {
+                error = e instanceof Error ? e.message : String(e);
             }
             logs = ctx.logs;
         }
-    } catch (outerError: any) {
-        error = "Critical Harness Error: " + outerError.message;
+    } catch (outerError: unknown) {
+        error = "Critical Harness Error: " + (outerError instanceof Error ? outerError.message : String(outerError));
     }
 
     if (!passed && logs.length > 0) {
