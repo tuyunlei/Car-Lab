@@ -4,7 +4,7 @@ import { GameCanvas } from './components/GameCanvas';
 import { SandboxControls } from './components/SandboxControls';
 import { UnitTests } from './components/UnitTests';
 import { ControlsSettings } from './components/ControlsSettings';
-import { LevelData, GameMode } from '../game/types';
+import { LevelData, GameMode, AppGameMode } from '../game/types';
 import { CarConfig } from '../config/types';
 import { LEVELS } from '../config/levels';
 import { DEFAULT_CAR_CONFIG } from '../config/cars';
@@ -15,12 +15,9 @@ import { ALL_COURSES } from '../config/courses';
 import { LessonDefinition, CourseCategory } from '../game/lessonTypes';
 import { loadProgress, saveProgress, updateProgress, GameProgress, LessonStatus } from '../game/progress';
 
-// Extension to GameMode for strict typing within App
-type ExtendedGameMode = GameMode | 'LESSON';
-
 const AppContent: React.FC = () => {
   const [currentLevel, setCurrentLevel] = useState<LevelData>(LEVELS[0]);
-  const [gameMode, setGameMode] = useState<ExtendedGameMode>(GameMode.LEVELS);
+  const [gameMode, setGameMode] = useState<AppGameMode>(GameMode.LEVELS);
   const [carConfig, setCarConfig] = useState<CarConfig>(DEFAULT_CAR_CONFIG);
   const [activeLesson, setActiveLesson] = useState<LessonDefinition | undefined>(undefined);
   
@@ -321,7 +318,7 @@ const AppContent: React.FC = () => {
             <GameCanvas 
                 key={`${currentLevel.id}-${gameMode}-${language}`} 
                 level={currentLevel} 
-                mode={gameMode as any}
+                mode={gameMode}
                 carConfig={carConfig}
                 activeLesson={activeLesson}
                 onExit={exitLesson}

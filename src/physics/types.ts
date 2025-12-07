@@ -4,6 +4,17 @@ export interface Vector2 {
   y: number;
 }
 
+/**
+ * 物理环境配置
+ * 描述影响物理模拟的环境参数
+ */
+export interface EnvironmentConfig {
+  /** 重力加速度 (m/s²)，正值表示向下 */
+  gravity: number;
+  /** 路面坡度 (弧度)，正值表示上坡 */
+  slope: number;
+}
+
 export enum StoppingState {
   MOVING = 'MOVING',
   STOPPING = 'STOPPING', 

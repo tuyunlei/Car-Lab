@@ -12,10 +12,8 @@ export interface MapObject {
   target?: boolean;
 }
 
-export interface EnvironmentConfig {
-    gravity: number;
-    slope: number;
-}
+// Re-export from physics to avoid circular dependency
+export { EnvironmentConfig } from '../physics/types';
 
 export interface LevelData {
   id: string;
@@ -25,10 +23,24 @@ export interface LevelData {
   startHeading: number;
   objects: MapObject[];
   instructions: string;
-  environment?: EnvironmentConfig;
+  // Use 'any' here temporarily if needed, but ideally it matches the re-exported type
+  environment?: { gravity: number; slope: number };
 }
 
 export enum GameMode {
   LEVELS = 'LEVELS',
   SANDBOX = 'SANDBOX'
+}
+
+// Extended types for UI state management
+export type AppGameMode = GameMode | 'LESSON';
+export type GameCanvasMode = GameMode | 'LESSON';
+
+// Type Guard
+export function isValidGameCanvasMode(value: unknown): value is GameCanvasMode {
+    return (
+        value === GameMode.LEVELS ||
+        value === GameMode.SANDBOX ||
+        value === 'LESSON'
+    );
 }

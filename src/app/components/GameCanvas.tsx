@@ -1,9 +1,8 @@
 
-
 import React, { useRef, useEffect, useState } from 'react';
 import { PhysicsState, InputState } from '../../physics/types';
 import { CarConfig } from '../../config/types';
-import { LevelData } from '../../game/types';
+import { LevelData, GameCanvasMode } from '../../game/types';
 import { LessonDefinition, LessonResult } from '../../game/lessonTypes';
 import { renderService } from '../renderService';
 import { Dashboard } from './Dashboard';
@@ -20,7 +19,7 @@ import { getSafetyInputs } from '../../game/systems/InputSystem';
 
 interface GameCanvasProps {
   level: LevelData;
-  mode: 'LEVELS' | 'SANDBOX' | 'LESSON';
+  mode: GameCanvasMode;
   carConfig: CarConfig;
   activeLesson?: LessonDefinition;
   onExit?: () => void;

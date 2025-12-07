@@ -1,7 +1,6 @@
 
 import { CarConfig } from '../config/types';
-import { PhysicsState, StoppingState, InputState } from './types';
-import { EnvironmentConfig } from '../game/types';
+import { PhysicsState, StoppingState, InputState, EnvironmentConfig } from './types';
 import { processInputs } from './inputSystem';
 import { updatePowertrain } from './powertrain';
 import { updateChassisDynamics } from './chassis';

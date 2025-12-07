@@ -48,3 +48,23 @@ export const createInitialState = (startPos: Vector2, startHeading: number): Phy
         speedKmh: 0
     };
 };
+
+/**
+ * Creates a reset version of the physics state while preserving some context if needed.
+ * Returns a new object, does not mutate inputs.
+ */
+export const createResetState = (
+    startPos: Vector2, 
+    startHeading: number
+): PhysicsState => {
+    // Re-use createInitialState logic to ensure consistency
+    // We could pass in previous state here if we wanted to preserve some settings,
+    // but for a hard reset, starting fresh is usually correct.
+    const newState = createInitialState(startPos, startHeading);
+    
+    // Explicitly set default handbrake for reset (already in initial state, but explicit is good)
+    newState.handbrakeInput = 1.0;
+    newState.handbrakePulled = true;
+    
+    return newState;
+};

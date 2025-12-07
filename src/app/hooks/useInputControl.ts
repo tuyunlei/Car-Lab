@@ -1,10 +1,9 @@
 
-
 import { useEffect, useRef } from 'react';
 import { InputState } from '../../physics/types';
 import { useControls } from '../contexts/ControlsContext';
 import { ControlAction, KeyMapping } from '../../config/controls';
-import { getEventKeyString } from '../../utils/input';
+import { getEventKeyString } from '../../utils/keyboard';
 
 // Helper to reverse map keys to actions for O(1) lookup
 const generateKeyMap = (mapping: KeyMapping): Record<string, ControlAction[]> => {

@@ -1,12 +1,11 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { useControls } from '../contexts/ControlsContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ControlAction } from '../../config/controls';
 import { KeyCap } from './KeyCap';
 import { PresetPreview } from './PresetPreview';
-import { getEventKeyString } from '../../utils/input';
+import { getEventKeyString, isModifierKey } from '../../utils/keyboard';
 
 interface ControlsSettingsProps {
     onClose: () => void;
@@ -31,9 +30,6 @@ export const ControlsSettings: React.FC<ControlsSettingsProps> = ({ onClose }) =
     // Key Listener
     useEffect(() => {
         if (!listeningAction) return;
-
-        const isModifierKey = (code: string) => 
-            code.startsWith('Shift') || code.startsWith('Control') || code.startsWith('Alt');
 
         const bindKey = (keyString: string) => {
             const currentKeys = currentMapping[listeningAction];

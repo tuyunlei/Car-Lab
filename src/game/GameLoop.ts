@@ -124,15 +124,22 @@ export class GameLoop {
         // 1. Input System
         const inputs = this.inputSystem.mergeInputs(rawInputs, triggers);
         
-        // 2. Physics System (Vehicle Logic)
-        this.physicsSystem.handleVehicleLogic(
+        // 2. Physics System (Vehicle Logic - Pure Function)
+        const vehicleResult = this.physicsSystem.handleVehicleLogic(
             this.state, 
             triggers, 
             config, 
             level.startPos, 
-            level.startHeading, 
-            this.deps.callbacks
+            level.startHeading
         );
+
+        // Apply logic updates
+        if (vehicleResult.hasChanged) {
+            this.state = vehicleResult.state;
+        }
+        if (vehicleResult.message) {
+            this.deps.callbacks.onMessage(vehicleResult.message);
+        }
 
         // 3. Physics System (Simulation)
         const env = level.environment || { gravity: 9.81, slope: 0 };
@@ -143,7 +150,7 @@ export class GameLoop {
         const events: GameEvent[] = [];
         
         if (collision) {
-            this.physicsSystem.handleCollisionConsequences(this.state);
+            this.state = this.physicsSystem.handleCollisionConsequences(this.state);
             events.push({ type: 'COLLISION', timestamp: performance.now() });
         }
         

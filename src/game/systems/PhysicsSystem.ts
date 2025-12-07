@@ -5,7 +5,13 @@ import { EnvironmentConfig, MapObject } from '../types';
 import { updatePhysics } from '../../physics/physicsEngine';
 import { checkCollisions, CollisionResult } from '../collision';
 import { TriggerState } from './InputSystem';
-import { GameLoopCallbacks } from '../GameLoop';
+import { createResetState } from '../../physics/factory';
+
+export interface VehicleLogicResult {
+    state: PhysicsState;
+    message?: string;
+    hasChanged: boolean;
+}
 
 export class PhysicsSystem {
     
@@ -25,95 +31,96 @@ export class PhysicsSystem {
 
     /**
      * Handles non-continuous vehicle logic like shifting, engine toggle, reset.
-     * Mutates state directly for these discrete events.
+     * Returns a new state object if changes occurred (Pure Function style).
      */
     public handleVehicleLogic(
         state: PhysicsState, 
         triggers: TriggerState, 
         config: CarConfig, 
         startPos: { x: number, y: number },
-        startHeading: number,
-        callbacks: GameLoopCallbacks
-    ) {
+        startHeading: number
+    ): VehicleLogicResult {
         const isC1 = config.drivetrainMode === 'C1_TRAINER';
+        
+        // Clone state to avoid mutation
+        let newState = { ...state };
+        let message: string | undefined;
+        let hasChanged = false;
 
         // 1. Engine Toggle
         if (triggers.toggleEngine) {
-            if (!state.engineOn) {
+            hasChanged = true;
+            if (!newState.engineOn) {
                 if (isC1) {
-                    state.starterActive = !state.starterActive;
-                    state.stalled = false; 
+                    newState.starterActive = !newState.starterActive;
+                    newState.stalled = false; 
                 } else {
-                    state.engineOn = true;
-                    state.stalled = false;
-                    state.rpm = config.engine.idleRPM;
-                    state.idleIntegral = 0;
-                    callbacks.onMessage('msg.engine_on');
+                    newState.engineOn = true;
+                    newState.stalled = false;
+                    newState.rpm = config.engine.idleRPM;
+                    newState.idleIntegral = 0;
+                    message = 'msg.engine_on';
                 }
             } else {
-                state.engineOn = false;
-                state.starterActive = false;
-                callbacks.onMessage('msg.engine_off');
+                newState.engineOn = false;
+                newState.starterActive = false;
+                message = 'msg.engine_off';
             }
         }
         
         // 2. Reset
         if (triggers.reset) {
-            state.position = { ...startPos };
-            state.heading = startHeading;
-            state.velocity = { x: 0, y: 0 };
-            state.localVelocity = { x: 0, y: 0 };
-            state.rpm = 0;
-            state.gear = 0;
-            state.engineOn = false;
-            state.stalled = false;
-            state.starterActive = false;
-            state.stoppingState = StoppingState.MOVING;
-            
-            // Reset Virtual Pedals
-            state.virtualThrottle = 0;
-            state.virtualBrake = 0;
-            state.virtualClutch = 0;
-            state.virtualSteering = 0;
-
-            state.handbrakeInput = 1.0;
-            state.handbrakePulled = true;
-
-            callbacks.onMessage('msg.reset');
+            newState = createResetState(startPos, startHeading);
+            message = 'msg.reset';
+            hasChanged = true;
         }
 
         // 3. Shifting
         if (triggers.shiftUp) {
-            if (state.clutchPosition > 0.5) {
-                const nextGear = state.gear + 1;
-                if (nextGear < config.transmission.gearRatios.length) state.gear = nextGear;
+            if (newState.clutchPosition > 0.5) {
+                const nextGear = newState.gear + 1;
+                if (nextGear < config.transmission.gearRatios.length) {
+                    newState.gear = nextGear;
+                    hasChanged = true;
+                }
             } else {
-                callbacks.onMessage('msg.clutch_warn');
+                message = 'msg.clutch_warn';
             }
         }
 
         if (triggers.shiftDown) {
-            if (state.clutchPosition > 0.5) {
-                const prevGear = state.gear - 1;
-                // Reverse Block
+            if (newState.clutchPosition > 0.5) {
+                const prevGear = newState.gear - 1;
+                
+                // Reverse Block Logic
+                let allowShift = true;
                 if (isC1 && prevGear === -1) {
-                    const fwdSpeed = state.localVelocity.x;
+                    const fwdSpeed = newState.localVelocity.x;
                     if (fwdSpeed > 2.0) {
-                        callbacks.onMessage('msg.reverse_block');
-                        return;
+                        message = 'msg.reverse_block';
+                        allowShift = false;
                     }
                 }
-                if (prevGear >= -1) state.gear = prevGear;
+                
+                if (allowShift && prevGear >= -1) {
+                    newState.gear = prevGear;
+                    hasChanged = true;
+                }
             } else {
-                callbacks.onMessage('msg.clutch_warn');
+                message = 'msg.clutch_warn';
             }
         }
+
+        return { state: newState, message, hasChanged };
     }
 
-    public handleCollisionConsequences(state: PhysicsState) {
-        state.velocity = { x: -state.velocity.x * 0.5, y: -state.velocity.y * 0.5 };
-        state.localVelocity = { x: 0, y: 0 };
-        state.engineOn = false;
-        state.stalled = true;
+    public handleCollisionConsequences(state: PhysicsState): PhysicsState {
+        return {
+            ...state,
+            velocity: { x: -state.velocity.x * 0.5, y: -state.velocity.y * 0.5 },
+            localVelocity: { x: 0, y: 0 },
+            engineOn: false,
+            stalled: true
+        };
     }
 }

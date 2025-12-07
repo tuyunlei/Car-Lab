@@ -1,7 +1,6 @@
 
 import { ChassisConfig, FeelConfig } from '../config/types';
-import { PhysicsState, StoppingState } from './types';
-import { EnvironmentConfig } from '../game/types';
+import { PhysicsState, StoppingState, EnvironmentConfig } from './types';
 import { smoothstep, clamp, softSaturation, lowpass, limitVector } from '../utils/math';
 
 const GRAVITY = 9.81;
